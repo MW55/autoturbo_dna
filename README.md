@@ -11,11 +11,22 @@ git clone https://github.com/MW55/autoturbo_dna.git
 pip install torch numpy scipy regex
 ```
 ## Useage
-Train (Simple): --wdir models/simple_train/ --train Encode (Simple): --wdir models/simple_train/ -i test_data/MOSLA.txt -o test_data/MOSLA_encoded.fasta
+Train: 
+sDNA.py --wdir models/simple_train/ --train 
 
--e Decode (Simple): --wdir models/simple_train/ -i test_data/MOSLA_encoded.fasta -o test_data/MOSLA_decoded.txt -d
+during training, a config will be generated in the model folder containing all the additional parameters used.
 
--e: encode -d: decode --train: train --wdir: relative path to the model --threads: number of threads
+Encode: 
+sDNA.py --wdir models/simple_train/ -i test_data/MOSLA.txt -o test_data/MOSLA_encoded.fasta -e 
+
+Decode: 
+sDNA.py --wdir models/simple_train/ -i test_data/MOSLA_encoded.fasta -o test_data/MOSLA_decoded.txt -d
+
+-e: encode 
+-d: decode 
+--train: train 
+--wdir: relative path to the model 
+--threads: number of threads
 
 there are quite a lot more optional parameters, you can find an overview and explainations in sDNA.py in the root directory.
 
