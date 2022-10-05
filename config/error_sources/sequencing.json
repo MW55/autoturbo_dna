@@ -1,0 +1,306 @@
+{
+  "1": {
+    "name": "Single End",
+    "category": "Illumina",
+    "type": "sequencing",
+    "err_rate": {
+      "deletion": 0.0024,
+      "insertion": 0.0013,
+      "mismatch": 0.9963,
+      "raw_rate": 0.0021
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "C": 0.25,
+            "G": 0.5,
+            "T": 0.25
+          },
+          "C": {
+            "A": 0.25,
+            "G": 0.5,
+            "T": 0.25
+          },
+          "G": {
+            "A": 0.25,
+            "C": 0.25,
+            "T": 0.5
+          },
+          "T": {
+            "A": 0.25,
+            "C": 0.25,
+            "G": 0.5
+          }
+        }
+      }
+    }
+  },
+  "2": {
+    "name": "Paired End",
+    "category": "Illumina",
+    "type": "sequencing",
+    "err_rate": {
+      "deletion": 0.0018,
+      "insertion": 0.0011,
+      "mismatch": 0.79,
+      "raw_rate": 0.0032
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "random": 1
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "C": 0.25,
+            "G": 0.5,
+            "T": 0.25
+          },
+          "C": {
+            "A": 0.25,
+            "G": 0.5,
+            "T": 0.25
+          },
+          "G": {
+            "A": 0.25,
+            "C": 0.25,
+            "T": 0.5
+          },
+          "T": {
+            "A": 0.25,
+            "C": 0.25,
+            "G": 0.5
+          }
+        }
+      }
+    }
+  },
+  "3": {
+    "name": "1D",
+    "category": "Nanopore",
+    "type": "sequencing",
+    "err_rate": {
+      "deletion": 0.37,
+      "insertion": 0.15,
+      "mismatch": 0.48,
+      "raw_rate": 0.2
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.15,
+          "C": 0.35,
+          "G": 0.35,
+          "T": 0.15
+        },
+        "position": {
+          "homopolymer": 0.46,
+          "random": 0.54
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.35,
+          "C": 0.15,
+          "G": 0.15,
+          "T": 0.35
+        },
+        "position": {
+          "homopolymer": 0.46,
+          "random": 0.54
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "TAC": {
+            "TGC": 1
+          },
+          "TAG": {
+            "TGG": 1
+          }
+        }
+      }
+    }
+  },
+  "4": {
+    "name": "2D",
+    "category": "Nanopore",
+    "type": "sequencing",
+    "err_rate": {
+      "deletion": 0.36,
+      "insertion": 0.23,
+      "mismatch": 0.41,
+      "raw_rate": 0.13
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.15,
+          "C": 0.35,
+          "G": 0.35,
+          "T": 0.15
+        },
+        "position": {
+          "homopolymer": 0.46,
+          "random": 0.54
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.35,
+          "C": 0.15,
+          "G": 0.15,
+          "T": 0.35
+        },
+        "position": {
+          "homopolymer": 0.46,
+          "random": 0.54
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "TAC": {
+            "TGC": 1
+          },
+          "TAG": {
+            "TGG": 1
+          }
+        }
+      }
+    }
+  },
+  "5": {
+    "name": "Subread",
+    "category": "PacBio",
+    "type": "sequencing",
+    "err_rate": {
+      "deletion": 0.2,
+      "insertion": 0.05,
+      "mismatch": 0.75,
+      "raw_rate": 0.02
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.15,
+          "C": 0.35,
+          "G": 0.35,
+          "T": 0.15
+        },
+        "position": {
+          "homopolymer": 0.85,
+          "random": 0.15
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.35,
+          "C": 0.15,
+          "G": 0.15,
+          "T": 0.35
+        },
+        "position": {
+          "homopolymer": 0.85,
+          "random": 0.15
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "CG": {
+            "CA": 0.5,
+            "TG": 0.5
+          }
+        }
+      }
+    }
+  },
+  "6": {
+    "name": "CCS",
+    "category": "PacBio",
+    "type": "sequencing",
+    "err_rate": {
+      "deletion": 0.21,
+      "insertion": 0.42,
+      "mismatch": 0.37,
+      "raw_rate": 0.14
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.15,
+          "C": 0.35,
+          "G": 0.35,
+          "T": 0.15
+        },
+        "position": {
+          "homopolymer": 0.85,
+          "random": 0.15
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.35,
+          "C": 0.15,
+          "G": 0.15,
+          "T": 0.35
+        },
+        "position": {
+          "homopolymer": 0.85,
+          "random": 0.15
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "CG": {
+            "CA": 0.5,
+            "TG": 0.5
+          }
+        }
+      }
+    }
+  }
+}

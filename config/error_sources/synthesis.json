@@ -1,0 +1,315 @@
+{
+  "1": {
+    "name": "ErrASE",
+    "category": "Column Synthesized Oligos",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.6,
+      "insertion": 0.2,
+      "mismatch": 0.2,
+      "raw_rate": 0.000025
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "2": {
+    "name": "MutS",
+    "category": "Column Synthesized Oligos",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.7,
+      "insertion": 0.15,
+      "mismatch": 0.15,
+      "raw_rate": 0.0001
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "3": {
+    "name": "Consensus Shuffle",
+    "category": "Column Synthesized Oligos",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.7,
+      "insertion": 0.15,
+      "mismatch": 0.15,
+      "raw_rate": 0.000125
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "4": {
+    "name": "Oligo Hybridization based error correction",
+    "category": "Microarray based Oligo Pools",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.6,
+      "insertion": 0.2,
+      "mismatch": 0.2,
+      "raw_rate": 0.0004
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "5": {
+    "name": "High-temperature ligation/hybridization based error correction",
+    "category": "Microarray based Oligo Pools",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.6,
+      "insertion": 0.2,
+      "mismatch": 0.2,
+      "raw_rate": 0.0017
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "AAAA": {
+            "ACGT": 1
+          },
+          "ACCC": {
+            "ACGC": 1
+          }
+        }
+      }
+    }
+  },
+  "6": {
+    "name": "ErrASE",
+    "category": "Microarray based Oligo Pools",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.6,
+      "insertion": 0.2,
+      "mismatch": 0.2,
+      "raw_rate": 0.00125
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "7": {
+    "name": "Nuclease-based error correction",
+    "category": "Microarray based Oligo Pools",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.6,
+      "insertion": 0.2,
+      "mismatch": 0.2,
+      "raw_rate": 0.00033
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "8": {
+    "name": "NGS-based error correction",
+    "category": "Microarray based Oligo Pools",
+    "type": "synthesis",
+    "err_rate": {
+      "deletion": 0.6,
+      "insertion": 0.2,
+      "mismatch": 0.2,
+      "raw_rate": 0.00011
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.4,
+          "C": 0.2,
+          "G": 0.2,
+          "T": 0.2
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  }
+}

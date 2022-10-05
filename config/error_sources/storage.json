@@ -1,0 +1,783 @@
+{
+  "1": {
+    "name": "E coli",
+    "category": "Prokaryotes",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0.08,
+      "insertion": 0.08,
+      "mismatch": 0.84,
+      "raw_rate": 3.17e-7
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "2": {
+    "name": "H sapiens",
+    "category": "Eukaryotes",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0.06,
+      "insertion": 0.06,
+      "mismatch": 0.88,
+      "raw_rate": 6.9e-11
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "3": {
+    "name": "M musculus",
+    "category": "Eukaryotes",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0.025,
+      "insertion": 0.025,
+      "mismatch": 0.95,
+      "raw_rate": 4.4e-9
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "4": {
+    "name": "D melanogaster",
+    "category": "Eukaryotes",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0.33,
+      "insertion": 0.33,
+      "mismatch": 0.34,
+      "raw_rate": 2.1e-8
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "5": {
+    "name": "S cerevisiae",
+    "category": "Eukaryotes",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0.13,
+      "insertion": 0.13,
+      "mismatch": 0.74,
+      "raw_rate": 7.9e-8
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "6": {
+    "name": "Depurination at pH 8 and 293.15K",
+    "category": "In-vitro",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 1,
+      "insertion": 0,
+      "mismatch": 0,
+      "raw_rate": 0.00001283
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.5,
+          "C": 0,
+          "G": 0.5,
+          "T": 0
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "7": {
+    "name": "Depurination at pH 8 and 193.15K",
+    "category": "In-vitro",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 1,
+      "insertion": 0,
+      "mismatch": 0,
+      "raw_rate": 5.98e-16
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "8": {
+    "name": "Depurination at pH 7 and 293.15K",
+    "category": "In-vitro",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 1,
+      "insertion": 0,
+      "mismatch": 0,
+      "raw_rate": 0.0001231
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.5,
+          "C": 0,
+          "G": 0.5,
+          "T": 0
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "9": {
+    "name": "Depurination at pH 7 and 193.15K",
+    "category": "In-vitro",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 1,
+      "insertion": 0,
+      "mismatch": 0,
+      "raw_rate": 5.736e-15
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.5,
+          "C": 0,
+          "G": 0.5,
+          "T": 0
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "mismatch": {}
+    }
+  },
+  "10": {
+    "name": "Jukes-Cantor model with q = 1",
+    "category": "In-vitro",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0,
+      "insertion": 0,
+      "mismatch": 1,
+      "raw_rate": 1
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "A": 0,
+            "C": 0.3333,
+            "G": 0.3333,
+            "T": 0.33340000000000003
+          },
+          "C": {
+            "A": 0.3333,
+            "C": 0,
+            "G": 0.3333,
+            "T": 0.33340000000000003
+          },
+          "G": {
+            "A": 0.3333,
+            "C": 0.3333,
+            "G": 0,
+            "T": 0.33340000000000003
+          },
+          "T": {
+            "A": 0.3333,
+            "C": 0.3333,
+            "G": 0.33340000000000003,
+            "T": 0
+          }
+        }
+      }
+    }
+  },
+  "11": {
+    "name": "Jukes-Cantor model with q = 0,5",
+    "category": "In-vitro",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0,
+      "insertion": 0,
+      "mismatch": 1,
+      "raw_rate": 1
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "A": 0.5,
+            "C": 0.16670000000000001,
+            "G": 0.16670000000000001,
+            "T": 0.1666
+          },
+          "C": {
+            "A": 0.16670000000000001,
+            "C": 0.5,
+            "G": 0.16670000000000001,
+            "T": 0.1666
+          },
+          "G": {
+            "A": 0.16670000000000001,
+            "C": 0.16670000000000001,
+            "G": 0.5,
+            "T": 0.1666
+          },
+          "T": {
+            "A": 0.1666,
+            "C": 0.16670000000000001,
+            "G": 0.16670000000000001,
+            "T": 0.5
+          }
+        }
+      }
+    }
+  },
+  "12": {
+    "name": "Kimura model with q = 0,5 and gamma = 1,5",
+    "category": "In-vitro",
+    "type": "storage",
+    "err_rate": {
+      "deletion": 0,
+      "insertion": 0,
+      "mismatch": 1,
+      "raw_rate": 1
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0.5,
+          "random": 0.5
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "A": 0.5,
+            "C": 0.25,
+            "G": 0,
+            "T": 0.25
+          },
+          "C": {
+            "A": 0.25,
+            "C": 0.5,
+            "G": 0.25,
+            "T": 0
+          },
+          "G": {
+            "A": 0,
+            "C": 0.25,
+            "G": 0.5,
+            "T": 0.25
+          },
+          "T": {
+            "A": 0.25,
+            "C": 0,
+            "G": 0.24989999999999998,
+            "T": 0.5001
+          }
+        }
+      }
+    }
+  },
+  "13": {
+    "name": "Phusion",
+    "category": "Polymerases",
+    "type": "pcr",
+    "err_rate": {
+      "deletion": 0.08,
+      "insertion": 0.08,
+      "mismatch": 0.84,
+      "raw_rate": 0.0000026
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "C": 0,
+            "G": 1,
+            "T": 0
+          },
+          "C": {
+            "A": 0,
+            "G": 0,
+            "T": 1
+          },
+          "G": {
+            "A": 1,
+            "C": 0,
+            "T": 0
+          },
+          "T": {
+            "A": 0,
+            "C": 1,
+            "G": 0
+          }
+        }
+      }
+    }
+  },
+  "14": {
+    "name": "Taq",
+    "category": "Polymerases",
+    "type": "pcr",
+    "err_rate": {
+      "deletion": 0.01,
+      "insertion": 0,
+      "mismatch": 0.99,
+      "raw_rate": 0.000043
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "C": 0.02,
+            "G": 0.97,
+            "T": 0.01
+          },
+          "C": {
+            "A": 0,
+            "G": 0,
+            "T": 1
+          },
+          "G": {
+            "A": 1,
+            "C": 0,
+            "T": 0
+          },
+          "T": {
+            "A": 0.01,
+            "C": 0.97,
+            "G": 0.02
+          }
+        }
+      }
+    }
+  },
+  "15": {
+    "name": "Pwo",
+    "category": "Polymerases",
+    "type": "pcr",
+    "err_rate": {
+      "deletion": 0,
+      "insertion": 0,
+      "mismatch": 1,
+      "raw_rate": 0.0000024
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "C": 0,
+            "G": 1,
+            "T": 0
+          },
+          "C": {
+            "A": 0,
+            "G": 0,
+            "T": 1
+          },
+          "G": {
+            "A": 0.57,
+            "C": 0.43,
+            "T": 0
+          },
+          "T": {
+            "A": 0.33,
+            "C": 0.67,
+            "G": 0
+          }
+        }
+      }
+    }
+  },
+  "16": {
+    "name": "Pfu",
+    "category": "Polymerases",
+    "type": "pcr",
+    "err_rate": {
+      "deletion": 0,
+      "insertion": 0,
+      "mismatch": 1,
+      "raw_rate": 0.0000028
+    },
+    "err_attributes": {
+      "deletion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "insertion": {
+        "pattern": {
+          "A": 0.25,
+          "C": 0.25,
+          "G": 0.25,
+          "T": 0.25
+        },
+        "position": {
+          "homopolymer": 0,
+          "random": 1
+        }
+      },
+      "mismatch": {
+        "pattern": {
+          "A": {
+            "C": 0,
+            "G": 0.75,
+            "T": 0.25
+          },
+          "C": {
+            "A": 0,
+            "G": 0,
+            "T": 1
+          },
+          "G": {
+            "A": 1,
+            "C": 0,
+            "T": 0
+          },
+          "T": {
+            "A": 0.25,
+            "C": 0.75,
+            "G": 0
+          }
+        }
+      }
+    }
+  }
+}
