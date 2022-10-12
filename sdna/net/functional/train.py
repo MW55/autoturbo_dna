@@ -26,16 +26,16 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         optimizer.zero_grad()
         #print(i)
         ### testing
-        rand = np.random.randint(0, 100)
-        if rand < 101:
-            #print("under 10")
-            x_train = torch.randint(0, 1, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-        elif rand < 20:
-            print("under 20")
-            x_train = torch.randint(1, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
+        #rand = np.random.randint(0, 100)
+        #if rand < 101:
+        #    #print("under 10")
+        #    x_train = torch.randint(0, 1, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
+        #elif rand < 20:
+        #    print("under 20")
+        #    x_train = torch.randint(1, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
         #test done
-        else:
-            x_train = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
+        #else:
+        x_train = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
 
         padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"]
         if args['encoder'] == 'rnnatt':
