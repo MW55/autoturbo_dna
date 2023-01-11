@@ -85,3 +85,4 @@ class Sim(object):
                 error_probability = 1.0
                 break
         return error_probability
+
