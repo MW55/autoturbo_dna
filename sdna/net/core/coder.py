@@ -262,3 +262,53 @@ class CoderRNN(CoderBase):
         x = Quantizer.apply(x)
         return x
 
+
+class CoderTransformer(CoderBase):
+    def __init__(self, arguments):
+        """
+        Transformer based network. Used to reconstruct the code stream from the encoder after
+        applying the noisy channel.
+
+        :param arguments: Arguments as dictionary.
+        """
+        super(CoderTransformer, self).__init__(arguments)
+
+        self.transformer = transformers.Transformer(
+            d_model=self.args["d_model"],
+            nhead=self.args["nhead"],
+            num_layers=self.args["num_layers"],
+            dim_feedforward=self.args["dim_feedforward"],
+            dropout=self.args["coder_dropout"],
+        )
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self.transformer = torch.nn.DataParallel(self.transformer)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+
+        :param inputs: Input tensor.
+        :return: Output tensor of coder.
+        """
+        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1]))
+        x_sys = self.transformer(x_sys)
+        x_sys = self.actf(x_sys)
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1]))
+        x_p1 = self.transformer(x_p1)
+        x_p1 = self.actf(x_p1)
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        if self.args["rate"] == "onethird":
+            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1]))
+            x_p2 = self.transformer(x_p2)
+            x_p2 = self.actf(x_p2)
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+            return torch.cat((x_sys, x_p1, x_p2), dim=2)
+
+        return torch.cat((x_sys, x_p1), dim=2)

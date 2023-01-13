@@ -45,7 +45,7 @@ def decode(args, net, in_seq=None):
         inp_ = args["bitdec"]
     else:
         inp_ = in_seq
-    if args["rate"] == "onthird":
+    if args["rate"] == "onethird":
         dim = 3
     elif args["rate"] == "onehalf":
         dim = 2

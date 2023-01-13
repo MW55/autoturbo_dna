@@ -472,7 +472,7 @@ class EncoderRNNatt(EncoderBase):
         """
         inputs = 2.0 * inputs - 1.0
 
-        #ToDo check if the hidden vector has to be added to the "x_sys".
+        # ToDo check if the hidden vector has to be added to the "x_sys".
         x_sys, _ = self._rnn_1(inputs)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
 
@@ -494,4 +494,85 @@ class EncoderRNNatt(EncoderBase):
         return x, hidden
 
     def initHidden(self):
-        return 2*[torch.zeros(2*self.args["enc_layers"], self.args["batch_size"], self.args["enc_units"])] #[torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"])]
+        return 2 * [torch.zeros(2 * self.args["enc_layers"], self.args["batch_size"], self.args[
+            "enc_units"])]  # [torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"])]
+
+
+class EncoderTransformer(EncoderBase):
+    def __init__(self, arguments):
+        """
+        Transformer based encoder with an interleaver.
+
+        :param arguments: Arguments as dictionary.
+        """
+        super(EncoderTransformer, self).__init__(arguments)
+
+        self._interleaver = Interleaver()
+
+        self._dropout = torch.nn.Dropout(self.args["enc_dropout"])
+
+        #Dropout and activation function might have to be removed, as they are used further down.
+        #Also, torch might have to be updated, as it doesnt know batch first.
+        self._encoder_layer_1 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
+                                                                 nhead=self.args["enc_kernel"],
+                                                                 dropout=self._dropout,
+                                                                 activation=self.args["enc_actf"],
+                                                                 batch_first=True)
+        self._transformer_1 = torch.nn.TransformerEncoder(self._encoder_layer_1, num_layers=self.args["enc_layers"])
+
+        self._encoder_layer_2 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
+                                                                 nhead=self.args["enc_kernel"],
+                                                                 dropout=self._dropout,
+                                                                 activation=self.args["enc_actf"],
+                                                                 batch_first=True)
+        self._transformer_2 = torch.nn.TransformerEncoder(self._encoder_layer_2, num_layers=self.args["enc_layers"])
+
+        if self.args["rate"] == "onethird":
+            self._encoder_layer_3 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
+                                                                     nhead=self.args["enc_kernel"],
+                                                                     dropout=self._dropout,
+                                                                     activation=self.args["enc_actf"],
+                                                                     batch_first=True)
+            self._transformer_3 = torch.nn.TransformerEncoder(self._encoder_layer_3, num_layers=self.args["enc_layers"])
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+
+        :param array: That array that is needed to set interleaver order.
+        """
+        self._interleaver.set_order(array)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._transformer_1 = torch.nn.DataParallel(self._transformer_1)
+        self._transformer_2 = torch.nn.DataParallel(self._transformer_2)
+        if self.args["rate"] == "onethird":
+            self._transformer_3 = torch.nn.DataParallel(self._transformer_3)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+
+        :param inputs: Input tensor.
+        :return: Output tensor of encoder.
+        """
+        inputs = 2.0 * inputs - 1.0
+
+        x_sys = self._transformer_1(inputs)
+        x_sys = self.actf(self._dropout(x_sys))
+
+        x_inter = self._interleaver(inputs)
+        x_inter = self._transformer_2(x_inter)
+        x_inter = self.actf(self._dropout(x_inter))
+
+        if self.args["rate"] == "onethird":
+            x_inter_2 = self._interleaver(x_inter)
+            x_inter_2 = self._transformer_3(x_inter_2)
+            x_inter_2 = self.actf(self._dropout(x_inter_2))
+            x_o = torch.cat([x_sys, x_inter, x_inter_2], dim=2)
+        else:
+            x_o = torch.cat([x_sys, x_inter], dim=2)
+        return x_o
