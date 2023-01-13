@@ -250,7 +250,6 @@ class DecoderCNN(DecoderBase):
         else:
             x_p1_deint = self.deinterleaver(x_p1)
 
-
         prior = torch.zeros((inputs.size()[0], inputs.size()[1], self.args["dec_inputs"]))
 
         if self.args["rate"] == "onethird":
@@ -300,7 +299,7 @@ class DecoderRNNatt(DecoderBase):
         super(DecoderRNNatt, self).__init__(arguments)
         self.interleaver = Interleaver()
         self.deinterleaver = DeInterleaver()
-        self.attn = torch.nn.Linear(self.args["dec_units"] * 2, self.args["batch_size"])#self.args["block_length"])
+        self.attn = torch.nn.Linear(self.args["dec_units"] * 2, self.args["batch_size"])  # self.args["block_length"])
         self.attn_combine = torch.nn.Linear(self.args["dec_units"] * 2, self.args["dec_units"])
 
         rnn = torch.nn.RNN
@@ -449,7 +448,8 @@ class DecoderRNNatt(DecoderBase):
         return x, hidden, [attn_weights_0, attn_weights_1]
 
     def initHidden(self):
-        return 2*[torch.zeros(2*self.args["enc_layers"], self.args["batch_size"], self.args["enc_units"])] #[torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"])]
+        return 2 * [torch.zeros(2 * self.args["enc_layers"], self.args["batch_size"], self.args[
+            "enc_units"])]  # [torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"])]
 
 
 class DecoderTransformer(DecoderBase):
@@ -466,29 +466,34 @@ class DecoderTransformer(DecoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["dec_dropout"])
 
-        self._encoder_layer_1 = torch.nn.TransformerEncoderLayer(d_model=self.args["dec_units"],
-                                                                 nhead=self.args["dec_kernel"],
-                                                                 dropout=self.args["enc_dropout"],
-                                                                 activation='relu', #only relu or gelu work as activation function
-                                                                 batch_first=True)
-        self._transformer_1 = torch.nn.TransformerEncoder(self._encoder_layer_1, num_layers=self.args["dec_layers"])
-
-        self._encoder_layer_2 = torch.nn.TransformerEncoderLayer(d_model=self.args["dec_units"],
-                                                                 nhead=self.args["dec_kernel"],
-                                                                 dropout=self.args["enc_dropout"],
-                                                                 activation='relu', #only relu or gelu work as activation function
-                                                                 batch_first=True)
-        self._transformer_2 = torch.nn.TransformerEncoder(self._encoder_layer_2, num_layers=self.args["dec_layers"])
-
+        self._transformers_1 = torch.nn.ModuleList()
+        self._transformers_2 = torch.nn.ModuleList()
         self._linears_1 = torch.nn.ModuleList()
         self._linears_2 = torch.nn.ModuleList()
 
+        #self.args["dec_units"]
         for i in range(self.args["dec_iterations"]):
-            self._linears_1.append(torch.nn.Linear(2 + self.args["dec_inputs"], self.args["dec_inputs"]))
+            encoder_layer1 = torch.nn.TransformerDecoderLayer(d_model=self.args["dec_units"],
+                                                              nhead=self.args["dec_kernel"],
+                                                              dropout=self.args["enc_dropout"],
+                                                              activation='relu',
+                                                              # only relu or gelu work as activation function
+                                                              batch_first=True)
+            self._transformers_1.append(torch.nn.TransformerDecoder(encoder_layer1, num_layers=self.args["dec_layers"]))
+            self._linears_1.append(torch.nn.Linear(self.args["dec_units"], self.args["dec_inputs"]))
+
+            encoder_layer2 = torch.nn.TransformerDecoderLayer(d_model=self.args["dec_units"],
+                                                              nhead=self.args["dec_kernel"],
+                                                              dropout=self.args["enc_dropout"],
+                                                              activation='relu',
+                                                              # only relu or gelu work as activation function
+                                                              batch_first=True)
+            self._transformers_1.append(torch.nn.TransformerDecoder(encoder_layer2, num_layers=self.args["dec_layers"]))
             if i == self.args["dec_iterations"] - 1:
-                self._linears_2.append(torch.nn.Linear(2 + self.args["dec_inputs"], 1))
+                self._linears_2.append(torch.nn.Linear(self.args["dec_units"], 1))
             else:
-                self._linears_2.append(torch.nn.Linear(2 + self.args["dec_inputs"], self.args["dec_inputs"]))
+                self._linears_2.append(torch.nn.Linear(self.args["dec_units"], self.args["dec_inputs"]))
+
 
     def set_interleaver_order(self, array):
         """
@@ -504,44 +509,108 @@ class DecoderTransformer(DecoderBase):
         Ensures that forward and backward propagation operations can be performed on multiple GPUs.
         """
         self.is_parallel = True
-        self._transformer_1 = torch.nn.DataParallel(self._transformer_1)
-        self._transformer_2 = torch.nn.DataParallel(self._transformer_2)
         for i in range(self.args["dec_iterations"]):
+            self._transformers_1[i] = torch.nn.DataParallel(self._transformers_1[i])
+            self._transformers_2[i] = torch.nn.DataParallel(self._transformers_2[i])
             self._linears_1[i] = torch.nn.DataParallel(self._linears_1[i])
             self._linears_2[i] = torch.nn.DataParallel(self._linears_2[i])
 
-    def forward(self, inputs):
+    def forward(self, inputs, x_train):
         """
         Calculates output tensors from input tensors based on the process.
 
         :param inputs: Input tensor.
         :return: Output tensor of decoder.
         """
+        #ToDo the x_train inputs might have to be interleaved
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_sys_inter = self.interleaver(x_sys)
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
-            x = torch.cat((x_sys_inter, x_p1, x_p2), 2)
         else:
-            x = torch.cat((x_sys_inter, x_p1), 2)
+            x_p1_deint = self.deinterleaver(x_p1)
+        prior = torch.zeros((inputs.size()[0], inputs.size()[1], self.args["dec_inputs"]))
+        if self.args["rate"] == "onethird":
+            for i in range(self.args["dec_iterations"]):
+                xi = torch.cat([x_sys, x_p1, prior], dim=2)
+                if self.is_parallel:
+                    self._transformers_1[i].module.flatten_parameters()
 
-        for i in range(self.args["dec_iterations"]):
-            x = self._transformer_1(x)
-            x = self._transformer_2(x)
-            x = self._linears_1[i](x)
-            x = torch.nn.functional.relu(x)
-            x = self._dropout(x)
-            x = self._linears_2[i](x)
-            x = torch.nn.functional.relu(x)
-            x = self._dropout(x)
-        x_sys_deinter = self.deinterleaver(x)
-        return x_sys_deinter
+                x_dec = self._transformers_1[i](x_train, xi)
+                x = self.actf(self._dropout(self._linears_1[i](x_dec)))
+                if self.args["extrinsic"]:
+                    x = x - prior
+                x_inter = self.interleaver(x)
+                xi = torch.cat([x_sys_inter, x_p2, x_inter], dim=2)
+                if self.is_parallel:
+                    self._transformers_2[i].module.flatten_parameters()
+                x_dec, _ = self._transformers_2[i](x_train, xi)
+                x = self.actf(self._dropout(self._linears_2[i](x_dec)))
+                if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
+                    x = x - x_inter
 
+                prior = self.deinterleaver(x)
+        else:
+            for i in range(self.args["dec_iterations"]):
+                xi = torch.cat([x_sys, x_p1_deint, prior], dim=2)
+                if self.is_parallel:
+                    self._transformers_1[i].module.flatten_parameters()
+                x_dec = self._transformers_1[i](x_train, xi)
+                x = self.actf(self._dropout(self._linears_1[i](x_dec)))
+                if self.args["extrinsic"]:
+                    x = x - prior
 
+                x_inter = self.interleaver(x)
+                xi = torch.cat([x_sys_inter, x_p1, x_inter], dim=2)
+                if self.is_parallel:
+                    self._transformers_2[i].module.flatten_parameters()
+                x_dec, _ = self._transformers_2[i](x_train, xi)
+                x = self.actf(self._dropout(self._linears_2[i](x_dec)))
+                if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
+                    x = x - x_inter
 
+                prior = self.deinterleaver(x)
 
+        x = torch.sigmoid(prior)
+        return x
 
+ #       for i in range(self.args["dec_iterations"]):
+ #           x = self._transformer_1(x)
+ #           x = self._transformer_2(x)
+ #           x = self._linears_1[i](x)
+ #           x = torch.nn.functional.relu(x)
+ #           x = self._dropout(x)
+ #           x = self._linears_2[i](x)
+ #           x = torch.nn.functional.relu(x)
+ #           x = self._dropout(x)
+ #       x_sys_deinter = self.deinterleaver(x)
+ #       return x_sys_deinter
 
+#    def forward(self, inputs):
+#        """
+#        #Calculates output tensors from input tensors based on the process.
 
+#:param inputs: Input tensor.
+#:return: Output tensor of decoder.
+#        """
+#        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+#        x_sys_inter = self.interleaver(x_sys)
+#        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+#        if self.args["rate"] == "onethird":
+#            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+#            x = torch.cat((x_sys_inter, x_p1, x_p2), 2)
+#        else:
+#            x = torch.cat((x_sys_inter, x_p1), 2)
 
+#        for i in range(self.args["dec_iterations"]):
+#            x = self._transformer_1(x)
+#            x = self._transformer_2(x)
+#            x = self._linears_1[i](x)
+#            x = torch.nn.functional.relu(x)
+#            x = self._dropout(x)
+#            x = self._linears_2[i](x)
+#            x = torch.nn.functional.relu(x)
+#            x = self._dropout(x)
+#        x_sys_deinter = self.deinterleaver(x)
+#        return x_sys_deinter

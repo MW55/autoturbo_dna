@@ -575,19 +575,19 @@ class EncoderTransformer(EncoderBase):
 
         if self.args["rate"] == "onethird":
             x_p1 = self._linear_2(inputs)
-            x_p1, _ = self._transformer_2(x_p1)
+            x_p1 = self._transformer_2(x_p1)
             x_p1 = self.actf(self._dropout(x_p1))
 
             x_inter = self._interleaver(inputs)
             x_inter = self._linear_3(x_inter)
-            x_p2, _ = self._transformer_3(x_inter)
+            x_p2 = self._transformer_3(x_inter)
             x_p2 = self.actf(self._dropout(x_p2))
 
             x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x_inter = self._linear_2(inputs)
             x_inter = self._interleaver(x_inter)
-            x_p1, _ = self._transformer_2(x_inter)
+            x_p1 = self._transformer_2(x_inter)
             x_p1 = self.actf(self._dropout(x_p1))
 
             x_o = torch.cat([x_sys, x_p1], dim=2)
