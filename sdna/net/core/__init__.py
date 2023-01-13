@@ -15,19 +15,22 @@ ENCODERS = {
     "srnn": SysEncoderRNN,
     "cnn": EncoderCNN,
     "scnn": SysEncoderCNN,
-    "rnnatt": EncoderRNNatt
+    "rnnatt": EncoderRNNatt,
+    "transformer": EncoderTransformer
 }
 
 DECODERS = {
     "rnn": DecoderRNN,
     "cnn": DecoderCNN,
-    "rnnatt": DecoderRNNatt
+    "rnnatt": DecoderRNNatt,
+    "transformer": DecoderTransformer
 }
 
 CODERS = {
     "mlp": CoderMLP,
     "cnn": CoderCNN,
-    "rnn": CoderRNN
+    "rnn": CoderRNN,
+    "transformer": CoderTransformer
 }
 
 __all__ = ['AutoEncoder',

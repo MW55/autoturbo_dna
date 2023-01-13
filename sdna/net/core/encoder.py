@@ -513,27 +513,31 @@ class EncoderTransformer(EncoderBase):
 
         #Dropout and activation function might have to be removed, as they are used further down.
         #Also, torch might have to be updated, as it doesnt know batch first.
+        print(self.args["enc_kernel"])
         self._encoder_layer_1 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
                                                                  nhead=self.args["enc_kernel"],
-                                                                 dropout=self._dropout,
-                                                                 activation=self.args["enc_actf"],
+                                                                 dropout=self.args["enc_dropout"],
+                                                                 activation='relu', #only relu or gelu work as activation function
                                                                  batch_first=True)
         self._transformer_1 = torch.nn.TransformerEncoder(self._encoder_layer_1, num_layers=self.args["enc_layers"])
+        self._linear_1 = torch.nn.Linear(1, self.args["enc_units"])
 
         self._encoder_layer_2 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
                                                                  nhead=self.args["enc_kernel"],
-                                                                 dropout=self._dropout,
-                                                                 activation=self.args["enc_actf"],
+                                                                 dropout=self.args["enc_dropout"],
+                                                                 activation='relu', #only relu or gelu work as activation function
                                                                  batch_first=True)
         self._transformer_2 = torch.nn.TransformerEncoder(self._encoder_layer_2, num_layers=self.args["enc_layers"])
+        self._linear_2 = torch.nn.Linear(1, self.args["enc_units"])
 
         if self.args["rate"] == "onethird":
             self._encoder_layer_3 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
                                                                      nhead=self.args["enc_kernel"],
-                                                                     dropout=self._dropout,
-                                                                     activation=self.args["enc_actf"],
+                                                                     dropout=self.args["enc_dropout"],
+                                                                     activation='relu', #only relu or gelu work as activation function
                                                                      batch_first=True)
             self._transformer_3 = torch.nn.TransformerEncoder(self._encoder_layer_3, num_layers=self.args["enc_layers"])
+            self._linear_3 = torch.nn.Linear(1, self.args["enc_units"])
 
     def set_interleaver_order(self, array):
         """
@@ -549,8 +553,11 @@ class EncoderTransformer(EncoderBase):
         """
         self._transformer_1 = torch.nn.DataParallel(self._transformer_1)
         self._transformer_2 = torch.nn.DataParallel(self._transformer_2)
+        self._linear_1 = torch.nn.DataParallel(self._linear_1)
+        self._linear_2 = torch.nn.DataParallel(self._linear_2)
         if self.args["rate"] == "onethird":
             self._transformer_3 = torch.nn.DataParallel(self._transformer_3)
+            self._linear_3 = torch.nn.DataParallel(self._linear_3)
 
     def forward(self, inputs):
         """
@@ -559,11 +566,36 @@ class EncoderTransformer(EncoderBase):
         :param inputs: Input tensor.
         :return: Output tensor of encoder.
         """
-        inputs = 2.0 * inputs - 1.0
+        #inputs = 2.0 * inputs - 1.0
+        #inputs = inputs.view(self.args["batch_size"], self.args["block_length"], -1)
 
-        x_sys = self._transformer_1(inputs)
+        x_sys = self._linear_1(inputs)
+        x_sys = self._transformer_1(x_sys)
         x_sys = self.actf(self._dropout(x_sys))
 
+        if self.args["rate"] == "onethird":
+            x_p1 = self._linear_2(inputs)
+            x_p1, _ = self._transformer_2(x_p1)
+            x_p1 = self.actf(self._dropout(x_p1))
+
+            x_inter = self._interleaver(inputs)
+            x_inter = self._linear_3(x_inter)
+            x_p2, _ = self._transformer_3(x_inter)
+            x_p2 = self.actf(self._dropout(x_p2))
+
+            x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        else:
+            x_inter = self._linear_2(inputs)
+            x_inter = self._interleaver(x_inter)
+            x_p1, _ = self._transformer_2(x_inter)
+            x_p1 = self.actf(self._dropout(x_p1))
+
+            x_o = torch.cat([x_sys, x_p1], dim=2)
+
+        x = EncoderBase.normalize(x_o)
+        return x
+
+        """
         x_inter = self._interleaver(inputs)
         x_inter = self._transformer_2(x_inter)
         x_inter = self.actf(self._dropout(x_inter))
@@ -576,3 +608,4 @@ class EncoderTransformer(EncoderBase):
         else:
             x_o = torch.cat([x_sys, x_inter], dim=2)
         return x_o
+        """

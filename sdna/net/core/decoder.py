@@ -450,3 +450,98 @@ class DecoderRNNatt(DecoderBase):
 
     def initHidden(self):
         return 2*[torch.zeros(2*self.args["enc_layers"], self.args["batch_size"], self.args["enc_units"])] #[torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"]), torch.zeros(10, 256, self.args["enc_units"])]
+
+
+class DecoderTransformer(DecoderBase):
+    def __init__(self, arguments):
+        """
+        Transformer based decoder with an de/interleaver.
+
+        :param arguments: Arguments as dictionary.
+        """
+        super(DecoderTransformer, self).__init__(arguments)
+
+        self.interleaver = Interleaver()
+        self.deinterleaver = DeInterleaver()
+
+        self._dropout = torch.nn.Dropout(self.args["dec_dropout"])
+
+        self._encoder_layer_1 = torch.nn.TransformerEncoderLayer(d_model=self.args["dec_units"],
+                                                                 nhead=self.args["dec_kernel"],
+                                                                 dropout=self.args["enc_dropout"],
+                                                                 activation='relu', #only relu or gelu work as activation function
+                                                                 batch_first=True)
+        self._transformer_1 = torch.nn.TransformerEncoder(self._encoder_layer_1, num_layers=self.args["dec_layers"])
+
+        self._encoder_layer_2 = torch.nn.TransformerEncoderLayer(d_model=self.args["dec_units"],
+                                                                 nhead=self.args["dec_kernel"],
+                                                                 dropout=self.args["enc_dropout"],
+                                                                 activation='relu', #only relu or gelu work as activation function
+                                                                 batch_first=True)
+        self._transformer_2 = torch.nn.TransformerEncoder(self._encoder_layer_2, num_layers=self.args["dec_layers"])
+
+        self._linears_1 = torch.nn.ModuleList()
+        self._linears_2 = torch.nn.ModuleList()
+
+        for i in range(self.args["dec_iterations"]):
+            self._linears_1.append(torch.nn.Linear(2 + self.args["dec_inputs"], self.args["dec_inputs"]))
+            if i == self.args["dec_iterations"] - 1:
+                self._linears_2.append(torch.nn.Linear(2 + self.args["dec_inputs"], 1))
+            else:
+                self._linears_2.append(torch.nn.Linear(2 + self.args["dec_inputs"], self.args["dec_inputs"]))
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver/de-interleaver order.
+
+        :param array: That array that is needed to set/restore interleaver order.
+        """
+        self.interleaver.set_order(array)
+        self.deinterleaver.set_order(array)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self.is_parallel = True
+        self._transformer_1 = torch.nn.DataParallel(self._transformer_1)
+        self._transformer_2 = torch.nn.DataParallel(self._transformer_2)
+        for i in range(self.args["dec_iterations"]):
+            self._linears_1[i] = torch.nn.DataParallel(self._linears_1[i])
+            self._linears_2[i] = torch.nn.DataParallel(self._linears_2[i])
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+
+        :param inputs: Input tensor.
+        :return: Output tensor of decoder.
+        """
+        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+        x_sys_inter = self.interleaver(x_sys)
+        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+        if self.args["rate"] == "onethird":
+            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+            x = torch.cat((x_sys_inter, x_p1, x_p2), 2)
+        else:
+            x = torch.cat((x_sys_inter, x_p1), 2)
+
+        for i in range(self.args["dec_iterations"]):
+            x = self._transformer_1(x)
+            x = self._transformer_2(x)
+            x = self._linears_1[i](x)
+            x = torch.nn.functional.relu(x)
+            x = self._dropout(x)
+            x = self._linears_2[i](x)
+            x = torch.nn.functional.relu(x)
+            x = self._dropout(x)
+        x_sys_deinter = self.deinterleaver(x)
+        return x_sys_deinter
+
+
+
+
+
+
+
+
