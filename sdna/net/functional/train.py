@@ -35,7 +35,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         #test done
         #else:
         x_train = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-        x_train = torch.cat((x_train, torch.zeros(256, 16, 1)), dim=1)
+        #x_train = torch.cat((x_train, torch.zeros(256, 16, 1)), dim=1)
 
         padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"] #TODO turn on padding all the time?
         #padding = args["block_padding"]
@@ -89,7 +89,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
     with torch.no_grad():
         for i in range(0, int(args["blocks"] / args["batch_size"])):
             x_val = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-            x_val = torch.cat((x_val, torch.zeros(256, 16, 1)), dim=1)
+            #x_val = torch.cat((x_val, torch.zeros(256, 16, 1)), dim=1)
             #x_val = torch.randint(0, 1, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
 
             padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"]

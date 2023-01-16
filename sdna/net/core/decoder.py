@@ -193,30 +193,34 @@ class DecoderCNN(DecoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["dec_dropout"])
 
-        self._latents_1 = torch.nn.ModuleList()
-        self._latents_2 = torch.nn.ModuleList()
         self._cnns_1 = torch.nn.ModuleList()
         self._cnns_2 = torch.nn.ModuleList()
         self._linears_1 = torch.nn.ModuleList()
         self._linears_2 = torch.nn.ModuleList()
 
+        self._latent_1 = Conv1d(self.args["dec_actf"],
+                                      layers=1,
+                                      in_channels=self.args["block_length"] + 16,  # + 16
+                                      out_channels=self.args["block_length"],
+                                      kernel_size=self.args["dec_kernel"])
+        self._latent_2 = Conv1d(self.args["dec_actf"],
+                                      layers=1,
+                                      in_channels=self.args["block_length"] + 16,  # + 16
+                                      out_channels=self.args["block_length"],
+                                      kernel_size=self.args["dec_kernel"])
+        self._latent_3 = Conv1d(self.args["dec_actf"],
+                                      layers=1,
+                                      in_channels=self.args["block_length"] + 16,  # + 16
+                                      out_channels=self.args["block_length"],
+                                      kernel_size=self.args["dec_kernel"])
+
         for i in range(self.args["dec_iterations"]):
-            self._latents_1.append(Conv1d(self.args["dec_actf"],
-                                       layers=1,
-                                       in_channels=2 + self.args["dec_inputs"], #+ 16
-                                       out_channels=2 + self.args["dec_inputs"],
-                                       kernel_size=self.args["dec_kernel"]))
             self._cnns_1.append(Conv1d(self.args["dec_actf"],
                                        layers=self.args["dec_layers"],
                                        in_channels=2 + self.args["dec_inputs"],
                                        out_channels=self.args["dec_units"],
                                        kernel_size=self.args["dec_kernel"]))
             self._linears_1.append(torch.nn.Linear(self.args["dec_units"], self.args["dec_inputs"]))
-            self._latents_2.append(Conv1d(self.args["dec_actf"],
-                                       layers=1,
-                                       in_channels=2 + self.args["dec_inputs"], #+ 16
-                                       out_channels=2 + self.args["dec_inputs"],
-                                       kernel_size=self.args["dec_kernel"]))
             self._cnns_2.append(Conv1d(self.args["dec_actf"],
                                        layers=self.args["dec_layers"],
                                        in_channels=2 + self.args["dec_inputs"],
@@ -241,9 +245,11 @@ class DecoderCNN(DecoderBase):
         Ensures that forward and backward propagation operations can be performed on multiple GPUs.
         """
         self.is_parallel = True
+        self._latent_1 = torch.nn.DataParallel(self._latent_1)
+        self._latent_2 = torch.nn.DataParallel(self._latent_2)
         for i in range(self.args["dec_iterations"]):
-            self._latents_1[i] = torch.nn.DataParallel(self._latents_1[i])
-            self._latents_2[i] = torch.nn.DataParallel(self._latents_2[i])
+            #self._latents_1[i] = torch.nn.DataParallel(self._latents_1[i])
+            #self._latents_2[i] = torch.nn.DataParallel(self._latents_2[i])
             self._cnns_1[i] = torch.nn.DataParallel(self._cnns_1[i])
             self._cnns_2[i] = torch.nn.DataParallel(self._cnns_2[i])
             self._linears_1[i] = torch.nn.DataParallel(self._linears_1[i])
@@ -256,29 +262,28 @@ class DecoderCNN(DecoderBase):
         :param inputs: Input tensor.
         :return: Output tensor of decoder.
         """
+        #TODO: ADD LATENT LAYERS!!!
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_sys_inter = self.interleaver(x_sys)
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
         else:
-            x_p1_deint = self.deinterleaver(x_p1)
+            x_p1_deint = self.deinterleaver(x_p1) #ToDo: check if that is right
 
         prior = torch.zeros((inputs.size()[0], inputs.size()[1], self.args["dec_inputs"]))
 
         if self.args["rate"] == "onethird":
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1, prior], dim=2)
-                x_dec = self._latents_1[i](xi)
-                x_dec = self._cnns_1[i](x_dec)
+                x_dec = self._cnns_1[i](xi)
                 x = self.actf(self._dropout(self._linears_1[i](x_dec)))
                 if self.args["extrinsic"]:
                     x = x - prior
 
                 x_inter = self.interleaver(x)
                 xi = torch.cat([x_sys_inter, x_p2, x_inter], dim=2)
-                x_dec = self._latents_2[i](xi)
-                x_dec = self._cnns_2[i](x_dec)
+                x_dec = self._cnns_2[i](xi)
                 x = self.actf(self._dropout(self._linears_2[i](x_dec)))
                 if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
                     x = x - x_inter
@@ -287,16 +292,14 @@ class DecoderCNN(DecoderBase):
         else:
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1_deint, prior], dim=2)
-                x_dec = self._latents_1[i](xi)
-                x_dec = self._cnns_1[i](x_dec)
+                x_dec = self._cnns_1[i](xi)
                 x = self.actf(self._dropout(self._linears_1[i](x_dec)))
                 if self.args["extrinsic"]:
                     x = x - prior
 
                 x_inter = self.interleaver(x)
                 xi = torch.cat([x_sys_inter, x_p1, x_inter], dim=2)
-                x_dec = self._latents_2[i](xi)
-                x_dec = self._cnns_2[i](x_dec)
+                x_dec = self._cnns_2[i](xi)
                 x = self.actf(self._dropout(self._linears_2[i](x_dec)))
                 if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
                     x = x - x_inter
@@ -304,6 +307,7 @@ class DecoderCNN(DecoderBase):
                 prior = self.deinterleaver(x)
 
         x = torch.sigmoid(prior)
+
         return x
 
 
