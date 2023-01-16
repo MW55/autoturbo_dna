@@ -260,13 +260,23 @@ class EncoderCNN(EncoderBase):
                              in_channels=1,
                              out_channels=self.args["enc_units"],
                              kernel_size=self.args["enc_kernel"])
-        self._linear_1 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._latent_1 = Conv1d(self.args["enc_actf"],
+                             layers=1,
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"], #+16,  # ToDo: make it a parameter
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_1 = torch.nn.Linear(self.args["enc_units"], 1) #+16
         self._cnn_2 = Conv1d(self.args["enc_actf"],
                              layers=self.args["enc_layers"],
                              in_channels=1,
                              out_channels=self.args["enc_units"],
                              kernel_size=self.args["enc_kernel"])
-        self._linear_2 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._latent_2 = Conv1d(self.args["enc_actf"],
+                             layers=1,
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"], #+16
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_2 = torch.nn.Linear(self.args["enc_units"], 1) #+16
 
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["enc_actf"],
@@ -274,7 +284,12 @@ class EncoderCNN(EncoderBase):
                                  in_channels=1,
                                  out_channels=self.args["enc_units"],
                                  kernel_size=self.args["enc_kernel"])
-            self._linear_3 = torch.nn.Linear(self.args["enc_units"], 1)
+            self._latent_3 = Conv1d(self.args["enc_actf"],
+                                    layers=1,
+                                    in_channels=self.args["enc_units"],
+                                    out_channels=self.args["enc_units"], #+16
+                                    kernel_size=self.args["enc_kernel"])
+            self._linear_3 = torch.nn.Linear(self.args["enc_units"], 1) #+16
 
     def set_interleaver_order(self, array):
         """
@@ -290,10 +305,13 @@ class EncoderCNN(EncoderBase):
         """
         self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
         self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
+        self._latent_1 = torch.nn.DataParallel(self._latent_1)
+        self._latent_2 = torch.nn.DataParallel(self._latent_2)
         self._linear_1 = torch.nn.DataParallel(self._linear_1)
         self._linear_2 = torch.nn.DataParallel(self._linear_2)
         if self.args["rate"] == "onethird":
             self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
+            self._latent_3 = torch.nn.DataParallel(self._latent_3)
             self._linear_3 = torch.nn.DataParallel(self._linear_3)
 
     def forward(self, inputs):
@@ -306,20 +324,24 @@ class EncoderCNN(EncoderBase):
         inputs = 2.0 * inputs - 1.0
 
         x_sys = self._cnn_1(inputs)
+        x_sys = self._latent_1(x_sys)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
 
         if self.args["rate"] == "onethird":
             x_p1 = self._cnn_2(inputs)
+            x_p1 = self._latent_2(x_p1)
             x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
 
             x_inter = self._interleaver(inputs)
             x_p2 = self._cnn_3(x_inter)
+            x_p2 = self._latent_3(x_p2)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
 
             x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x_inter = self._interleaver(inputs)
             x_p1 = self._cnn_2(x_inter)
+            x_p1 = self._latent_2(x_p1)
             x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
             x_o = torch.cat([x_sys, x_p1], dim=2)
 

@@ -113,22 +113,22 @@ class CoderCNN(CoderBase):
         self._cnn_1 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
-                             out_channels=self.args["coder_units"],
+                             out_channels=self.args["coder_units"],# + 16,
                              kernel_size=self.args["coder_kernel"])
-        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_1 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] +16 + self.args["block_padding"]), self.args["block_length"]) #+16
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
-                             out_channels=self.args["coder_units"],
+                             out_channels=self.args["coder_units"], #+16
                              kernel_size=self.args["coder_kernel"])
-        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + 16 + self.args["block_padding"]), self.args["block_length"]) #+16
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
-                                 out_channels=self.args["coder_units"],
+                                 out_channels=self.args["coder_units"], #+16
                                  kernel_size=self.args["coder_kernel"])
-            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+            self._linear_3 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + 16 + self.args["block_padding"]), self.args["block_length"]) #+16
 
     def set_parallel(self):
         """
