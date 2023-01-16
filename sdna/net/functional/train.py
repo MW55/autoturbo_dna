@@ -102,6 +102,9 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             if mode == "all" or mode == "encoder" or mode == "decoder":
                 s_dec = torch.clamp(s_dec, 0.0, 1.0)
                 s_dec = torch.round(s_dec.detach())
+                ###
+                #s_dec = s_dec
+                ###
                 accuracy += torch.sum(s_dec.eq(x_val.detach())).item()
             else:
                 code_rate = s_enc.size()[2]
@@ -111,9 +114,9 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
             noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
 
-    accuracy /= (args["blocks"] * args["block_length"] * code_rate)
+    accuracy /= (args["blocks"] * (args["block_length"]+16) * code_rate)
     stability /= (args["blocks"] / args["batch_size"])
-    noise /= (args["blocks"] * args["block_length"] * 3.0)
+    noise /= (args["blocks"] * args["block_length"] * 3.0) #ToDo multiplier is hardcoded!
     return accuracy, stability, noise
 
 
