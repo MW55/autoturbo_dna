@@ -115,20 +115,20 @@ class CoderCNN(CoderBase):
                              in_channels=1,
                              out_channels=self.args["coder_units"],# + 16,
                              kernel_size=self.args["coder_kernel"])
-        self._linear_1 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] +16 + self.args["block_padding"]), self.args["block_length"]+16) #+16
+        self._linear_1 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] +8 + self.args["block_padding"]), self.args["block_length"]+8) #+16
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
                              out_channels=self.args["coder_units"], #+16
                              kernel_size=self.args["coder_kernel"])
-        self._linear_2 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + 16 + self.args["block_padding"]), self.args["block_length"]+16) #+16
+        self._linear_2 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + 8 + self.args["block_padding"]), self.args["block_length"]+8) #+16
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
                                  out_channels=self.args["coder_units"], #+16
                                  kernel_size=self.args["coder_kernel"])
-            self._linear_3 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + 16 + self.args["block_padding"]), self.args["block_length"]+16) #+16
+            self._linear_3 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + 8 + self.args["block_padding"]), self.args["block_length"]+8) #+16
 
     def set_parallel(self):
         """
@@ -154,20 +154,20 @@ class CoderCNN(CoderBase):
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
 
-        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+16, 1))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+8, 1))
 
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         x_p1 = self._cnn_2(x_p1)
         x_p1 = torch.flatten(x_p1, start_dim=1)
         x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
-        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"]+16, 1))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"]+8, 1))
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
             x_p2 = self._cnn_3(x_p2)
             x_p2 = torch.flatten(x_p2, start_dim=1)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
-            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+16, 1))
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+8, 1))
 
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:

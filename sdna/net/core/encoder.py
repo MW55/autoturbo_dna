@@ -263,7 +263,7 @@ class EncoderCNN(EncoderBase):
         self._latent_1 = Conv1d(self.args["enc_actf"],
                              layers=1,
                              in_channels=self.args["block_length"],
-                             out_channels=self.args["block_length"] + 16, #+16,  # ToDo: make it a parameter
+                             out_channels=self.args["block_length"] + 8, #+16,  # ToDo: make it a parameter
                              kernel_size=self.args["enc_kernel"])
         self._linear_1 = torch.nn.Linear(self.args["enc_units"], 1) #+16
         self._cnn_2 = Conv1d(self.args["enc_actf"],
@@ -274,7 +274,7 @@ class EncoderCNN(EncoderBase):
         self._latent_2 = Conv1d(self.args["enc_actf"],
                              layers=1,
                              in_channels=self.args["block_length"],
-                             out_channels=self.args["block_length"] + 16,
+                             out_channels=self.args["block_length"] + 8,
                              kernel_size=self.args["enc_kernel"])
         self._linear_2 = torch.nn.Linear(self.args["enc_units"], 1) #+16
 
@@ -287,7 +287,7 @@ class EncoderCNN(EncoderBase):
             self._latent_3 = Conv1d(self.args["enc_actf"],
                                     layers=1,
                                     in_channels=self.args["block_length"],
-                                    out_channels=self.args["block_length"] + 16,
+                                    out_channels=self.args["block_length"] + 8,
                                     kernel_size=self.args["enc_kernel"])
             self._linear_3 = torch.nn.Linear(self.args["enc_units"], 1) #+16
 
@@ -337,19 +337,19 @@ class EncoderCNN(EncoderBase):
             x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
 
             x_inter = self._interleaver(inputs)
-            x_inter = x_inter.permute(0, 2, 1)
-            x_inter = self._latent_3(x_inter)
-            x_inter = x_inter.permute(0, 2, 1)
             x_p2 = self._cnn_3(x_inter)
+            x_p2 = x_p2.permute(0, 2, 1)
+            x_p2 = self._latent_3(x_p2)
+            x_p2 = x_p2.permute(0, 2, 1)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
 
             x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x_inter = self._interleaver(inputs)
-            x_inter = x_inter.permute(0, 2, 1)
-            x_inter = self._latent_2(x_inter)
-            x_inter = x_inter.permute(0, 2, 1)
             x_p1 = self._cnn_2(x_inter)
+            x_p1 = x_p1.permute(0, 2, 1)
+            x_p1 = self._latent_2(x_p1)
+            x_p1 = x_p1.permute(0, 2, 1)
             x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
             x_o = torch.cat([x_sys, x_p1], dim=2)
 

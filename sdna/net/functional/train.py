@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn.functional as func
+from sdna.net.core.channel import Channel
 import numpy as np
 
 
@@ -37,6 +38,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         x_train = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
         #x_train = torch.cat((x_train, torch.zeros(256, 16, 1)), dim=1)
 
+
+
         padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"] #TODO turn on padding all the time?
         #padding = args["block_padding"]
         if args['encoder'] == 'rnnatt':
@@ -55,11 +58,11 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
                 hidden = s_dec[1]
             gradient = func.binary_cross_entropy(s_dec, x_train)
             if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
-                #gradient += model.channel.evaluate(s_enc) #*1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
-                if np.random.randint(0, 2) == 0:
-                    gradient += model.channel.evaluate(s_enc)/2
-                else:
-                    gradient.data = torch.tensor(model.channel.evaluate(s_enc) / 2)
+                gradient += model.channel.evaluate(s_enc) #*1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
+                #if np.random.randint(0, 2) == 0:
+                #    gradient += model.channel.evaluate(s_enc)/2
+                #else:
+                #    gradient.data = torch.tensor(model.channel.evaluate(s_enc) / 2)
         else:
             gradient = func.mse_loss(s_enc, c_dec)
         gradient.backward()
@@ -105,19 +108,22 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             if mode == "all" or mode == "encoder" or mode == "decoder":
                 s_dec = torch.clamp(s_dec, 0.0, 1.0)
                 s_dec = torch.round(s_dec.detach())
-                ###
-                #s_dec = s_dec
-                ###
+                single_acc = torch.sum(s_enc.eq(c_dec.detach())).item()
+                if i == 1:
+                    print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_dec.eq(x_val.detach())).item()
             else:
                 code_rate = s_enc.size()[2]
                 s_enc = torch.round(s_enc.detach())
+                single_acc = torch.sum(s_enc.eq(c_dec.detach())).item()
+                if i == 1:
+                    print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_enc.eq(c_dec.detach())).item()
 
             equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
             noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
 
-    accuracy /= (args["blocks"] * (args["block_length"]+16) * code_rate)
+    accuracy /= (args["blocks"] * (args["block_length"]+8) * code_rate)
     stability /= (args["blocks"] / args["batch_size"])
     noise /= (args["blocks"] * args["block_length"] * 3.0) #ToDo multiplier is hardcoded!
     return accuracy, stability, noise

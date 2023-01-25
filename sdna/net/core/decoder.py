@@ -200,19 +200,20 @@ class DecoderCNN(DecoderBase):
 
         self._latent_1 = Conv1d(self.args["dec_actf"],
                                       layers=1,
-                                      in_channels=self.args["block_length"] + 16,  # + 16
+                                      in_channels=self.args["block_length"] + 8,  # + 16
                                       out_channels=self.args["block_length"],
                                       kernel_size=self.args["dec_kernel"])
         self._latent_2 = Conv1d(self.args["dec_actf"],
                                       layers=1,
-                                      in_channels=self.args["block_length"] + 16,  # + 16
+                                      in_channels=self.args["block_length"] + 8,  # + 16
                                       out_channels=self.args["block_length"],
                                       kernel_size=self.args["dec_kernel"])
-        self._latent_3 = Conv1d(self.args["dec_actf"],
-                                      layers=1,
-                                      in_channels=self.args["block_length"] + 16,  # + 16
-                                      out_channels=self.args["block_length"],
-                                      kernel_size=self.args["dec_kernel"])
+        if self.args["rate"] == "onethird":
+            self._latent_3 = Conv1d(self.args["dec_actf"],
+                                          layers=1,
+                                          in_channels=self.args["block_length"] + 8,  # + 16
+                                          out_channels=self.args["block_length"],
+                                          kernel_size=self.args["dec_kernel"])
 
         for i in range(self.args["dec_iterations"]):
             self._cnns_1.append(Conv1d(self.args["dec_actf"],
@@ -247,6 +248,8 @@ class DecoderCNN(DecoderBase):
         self.is_parallel = True
         self._latent_1 = torch.nn.DataParallel(self._latent_1)
         self._latent_2 = torch.nn.DataParallel(self._latent_2)
+        if self.args["rate"] == "onethird":
+            self._latent_3 = torch.nn.DataParallel(self._latent_3)
         for i in range(self.args["dec_iterations"]):
             #self._latents_1[i] = torch.nn.DataParallel(self._latents_1[i])
             #self._latents_2[i] = torch.nn.DataParallel(self._latents_2[i])
@@ -264,14 +267,30 @@ class DecoderCNN(DecoderBase):
         """
         #TODO: ADD LATENT LAYERS!!!
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+
+        x_sys = x_sys.permute(0, 2, 1)
+        x_sys = self._latent_1(x_sys)
+        x_sys = x_sys.permute(0, 2, 1)
+
         x_sys_inter = self.interleaver(x_sys)
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+
+        x_p1 = x_p1.permute(0, 2, 1)
+        x_p1 = self._latent_2(x_p1)
+        x_p1 = x_p1.permute(0, 2, 1)
+
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+
+            x_p2 = x_p2.permute(0, 2, 1)
+            x_p2 = self._latent_3(x_p2)
+            x_p2 = x_p2.permute(0, 2, 1)
         else:
             x_p1_deint = self.deinterleaver(x_p1) #ToDo: check if that is right
 
-        prior = torch.zeros((inputs.size()[0], inputs.size()[1], self.args["dec_inputs"]))
+
+
+        prior = torch.zeros((inputs.size()[0], inputs.size()[1]-8, self.args["dec_inputs"])) #todo: -16 is hardcoded latent rendundancy! Has to be made an argurment
 
         if self.args["rate"] == "onethird":
             for i in range(self.args["dec_iterations"]):
@@ -289,7 +308,7 @@ class DecoderCNN(DecoderBase):
                     x = x - x_inter
 
                 prior = self.deinterleaver(x)
-        else:
+        else: # Todo: Check if this is actually correct
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1_deint, prior], dim=2)
                 x_dec = self._cnns_1[i](xi)
@@ -545,6 +564,9 @@ class DecoderTransformer(DecoderBase):
         :return: Output tensor of decoder.
         """
         #ToDo the x_train inputs might have to be interleaved
+        inputs = inputs.permute(0, 2, 1)
+        x_train = x_train.permute(0, 2, 1)
+
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_sys_inter = self.interleaver(x_sys)
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
