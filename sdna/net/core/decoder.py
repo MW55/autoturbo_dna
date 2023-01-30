@@ -206,6 +206,8 @@ class DecoderCNN(DecoderBase):
                                               self.args["block_length"] + int(self.args["redundancy"]/2))
         self._latent_2_2 = torch.nn.Linear(self.args["block_length"] + int(self.args["redundancy"]/2),
                                                 self.args["block_length"])
+        #For now trying it after the iterative decoding, it should also be tried inside the iterative decoding or before
+        self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
         """
         self._latent_1_1 = Conv1d(self.args["dec_actf"],
                                       layers=1,
@@ -360,7 +362,7 @@ class DecoderCNN(DecoderBase):
                     x = x - x_inter
 
                 prior = self.deinterleaver(x)
-
+        x = self._batch_norm_1(x) #new
         x = torch.sigmoid(prior)
 
         return x

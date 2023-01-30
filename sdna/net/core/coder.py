@@ -38,6 +38,8 @@ class CoderBase(torch.nn.Module):
             return torch.sigmoid(inputs)
         elif self.args["coder_actf"] == "identity":
             return inputs
+        elif self.args["coder_actf"] == "leakyrelu":
+            return func.leaky_relu(inputs)
         else:
             return inputs
 
@@ -122,6 +124,8 @@ class CoderCNN(CoderBase):
                              out_channels=self.args["coder_units"], #+16
                              kernel_size=self.args["coder_kernel"])
         self._linear_2 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
+        self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+        self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
@@ -129,6 +133,7 @@ class CoderCNN(CoderBase):
                                  out_channels=self.args["coder_units"], #+16
                                  kernel_size=self.args["coder_kernel"])
             self._linear_3 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
+            self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
 
     def set_parallel(self):
         """
@@ -155,12 +160,14 @@ class CoderCNN(CoderBase):
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
 
         x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+        x_sys = self._batch_norm_1(x_sys)
 
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         x_p1 = self._cnn_2(x_p1)
         x_p1 = torch.flatten(x_p1, start_dim=1)
         x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
         x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+        x_p1 = self._batch_norm_2(x_p1)
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
@@ -168,6 +175,7 @@ class CoderCNN(CoderBase):
             x_p2 = torch.flatten(x_p2, start_dim=1)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
             x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+            x_p2 = self._batch_norm_3(x_p2)
 
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
