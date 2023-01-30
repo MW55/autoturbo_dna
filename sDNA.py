@@ -150,7 +150,7 @@ class SDNAArgs:
                                         dest='block_padding')
         self.net_structure.add_argument('--encoder',
                                         help='Choose which encoder to use: RNN, SRNN, CNN, SCNN or RNNatt. (default=CNN)',
-                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt', 'transformer'],
+                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt', 'transformer', 'cnn_nolat'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -195,7 +195,7 @@ class SDNAArgs:
                                         dest='enc_rnn')
         self.net_structure.add_argument('--decoder',
                                         help='Choose which decoder to use: RNN or CNN. (default=CNN)',
-                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer'],
+                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -256,7 +256,7 @@ class SDNAArgs:
                                         dest='extrinsic')
         self.net_structure.add_argument('--coder',
                                         help='Choose which coder to use: MLP, CNN or RNN. (default=CNN)',
-                                        choices=['mlp', 'cnn', 'rnn', 'transformer'],
+                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -307,7 +307,12 @@ class SDNAArgs:
                                         default=None,
                                         metavar='CHOICE',
                                         dest='init_weights')
-
+        self.net_structure.add_argument('--lat-redundancy',
+                                        help='Redundancy of the final encoder layer (and first decoder layer), required to account for constraints. Has to be divisible by 2',
+                                        type=int,
+                                        default=8,
+                                        metavar='X',
+                                        dest='redundancy')
     def _net_training(self):
         """
         Function to generate the arguments for 'NN training parameters'.

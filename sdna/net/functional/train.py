@@ -123,7 +123,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
             noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
 
-    accuracy /= (args["blocks"] * (args["block_length"]+8) * code_rate)
+    accuracy /= (args["blocks"] * args["block_length"] * code_rate) #+ int(args["redundancy"])
     stability /= (args["blocks"] / args["batch_size"])
     noise /= (args["blocks"] * args["block_length"] * 3.0) #ToDo multiplier is hardcoded!
     return accuracy, stability, noise
