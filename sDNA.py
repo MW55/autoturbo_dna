@@ -163,7 +163,7 @@ class SDNAArgs:
                                         dest='enc_units')
         self.net_structure.add_argument('--enc-actf',
                                         help='Choose which activation function should be applied to the encoder: tanh, elu, relu, selu, sigmoid or identity. (default=elu)',
-                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity'],
+                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity', 'leakyrelu'],
                                         type=str.lower,
                                         default='elu',
                                         metavar='CHOICE',
@@ -208,7 +208,7 @@ class SDNAArgs:
                                         dest='dec_units')
         self.net_structure.add_argument('--dec-actf',
                                         help='Choose which activation function should be applied to the decoder: tanh, elu, relu, selu, sigmoid or identity. (default=identity)',
-                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity'],
+                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity', 'leakyrelu'],
                                         type=str.lower,
                                         default='identity',
                                         metavar='CHOICE',
@@ -269,7 +269,7 @@ class SDNAArgs:
                                         dest='coder_units')
         self.net_structure.add_argument('--coder-actf',
                                         help='Choose which activation function should be applied to the coder: tanh, elu, relu, selu, sigmoid or identity. (default=elu)',
-                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity'],
+                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity', 'leakyrelu'],
                                         type=str.lower,
                                         default='elu',
                                         metavar='CHOICE',

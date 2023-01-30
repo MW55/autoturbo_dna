@@ -94,6 +94,8 @@ class Conv1d(torch.nn.Module):
             return torch.sigmoid(inputs)
         elif self._actf == "identity":
             return inputs
+        elif self._actf == "leakyrelu":
+            return torch.nn.LeakyReLU(inputs)
         else:
             return inputs
 
