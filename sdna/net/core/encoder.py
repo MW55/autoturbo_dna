@@ -363,7 +363,8 @@ class EncoderCNN(EncoderBase):
         x_sys = self._latent_1_1(x_sys)
         x_sys = self._latent_1_2(x_sys)
         x_sys = x_sys.permute(0, 2, 1)
-        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+        x_sys = self._linear_1(x_sys)
+        x_sys = self.actf(self._dropout(x_sys))
 
         if self.args["rate"] == "onethird":
             x_p1 = self._cnn_2(inputs)
@@ -371,7 +372,8 @@ class EncoderCNN(EncoderBase):
             x_p1 = self._latent_2_1(x_p1)
             x_p1 = self._latent_2_2(x_p1)
             x_p1 = x_p1.permute(0, 2, 1)
-            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            x_p1 = self._linear_2(x_p1)
+            x_p1 = self.actf(self._dropout(x_p1))
 
             x_inter = self._interleaver(inputs)
             x_p2 = self._cnn_3(x_inter)
@@ -379,7 +381,8 @@ class EncoderCNN(EncoderBase):
             x_p2 = self._latent_3_1(x_p2)
             x_p2 = self._latent_3_2(x_p2)
             x_p2 = x_p2.permute(0, 2, 1)
-            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+            x_p2 = self._linear_3(x_p2)
+            x_p2 = self.actf(self._dropout(x_p2))
 
             x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
@@ -389,7 +392,8 @@ class EncoderCNN(EncoderBase):
             x_p1 = self._latent_2_1(x_p1)
             x_p1 = self._latent_2_2(x_p1)
             x_p1 = x_p1.permute(0, 2, 1)
-            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            x_p1 = self._linear_2(x_p1)
+            x_p1 = self.actf(self._dropout(x_p1))
             x_o = torch.cat([x_sys, x_p1], dim=2)
 
         x = EncoderBase.normalize(x_o)
