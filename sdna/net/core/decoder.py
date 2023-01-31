@@ -304,8 +304,11 @@ class DecoderCNN(DecoderBase):
 
         x_sys = x_sys.permute(0, 2, 1)
         x_sys = self._latent_1_1(x_sys)
+        #x_sys = self.actf(self._dropout(x_sys)) # new, could dropout lead to different sized outputs?
         x_sys = self._latent_1_2(x_sys)
+        #x_sys = self.actf(self._dropout(x_sys))  # new, could dropout lead to different sized outputs?
         x_sys = x_sys.permute(0, 2, 1)
+        #x_sys = self.actf(self._dropout(x_sys))
 
 
         x_sys_inter = self.interleaver(x_sys)
@@ -313,16 +316,22 @@ class DecoderCNN(DecoderBase):
 
         x_p1 = x_p1.permute(0, 2, 1)
         x_p1 = self._latent_2_1(x_p1)
+        #x_p1 = self.actf(self._dropout(x_p1))  # new, could dropout lead to different sized outputs?
         x_p1 = self._latent_2_2(x_p1)
+        #x_p1 = self.actf(self._dropout(x_p1))  # new, could dropout lead to different sized outputs?
         x_p1 = x_p1.permute(0, 2, 1)
+        #x_p1 = self.actf(self._dropout(x_p1))
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
 
             x_p2 = x_p2.permute(0, 2, 1)
             x_p2 = self._latent_3_1(x_p2)
+            #x_p2 = self.actf(self._dropout(x_p2))  # new, could dropout lead to different sized outputs?
             x_p2 = self._latent_3_2(x_p2)
+            #x_p2 = self.actf(self._dropout(x_p2))  # new, could dropout lead to different sized outputs?
             x_p2 = x_p2.permute(0, 2, 1)
+            #x_p2 = self.actf(self._dropout(x_p2))
         else:
             x_p1_deint = self.deinterleaver(x_p1) #ToDo: check if that is right
 

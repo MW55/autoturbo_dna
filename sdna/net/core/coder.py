@@ -40,6 +40,8 @@ class CoderBase(torch.nn.Module):
             return inputs
         elif self.args["coder_actf"] == "leakyrelu":
             return func.leaky_relu(inputs)
+        elif self.args["coder_actf"] == "gelu":
+            return func.gelu(inputs)
         else:
             return inputs
 

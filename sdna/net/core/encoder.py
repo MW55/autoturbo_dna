@@ -366,39 +366,44 @@ class EncoderCNN(EncoderBase):
         inputs = 2.0 * inputs - 1.0
 
         x_sys = self._cnn_1(inputs)
-        x_sys = self._linear_1(x_sys) # New here
+        x_sys = self._linear_1(x_sys)
         x_sys = x_sys.permute(0, 2, 1)
         x_sys = self._latent_1_1(x_sys)
+        #x_sys = self.actf(self._dropout(x_sys)) #new
         x_sys = self._latent_1_2(x_sys)
-
+        #x_sys = self.actf(self._dropout(x_sys)) #new
         x_sys = x_sys.permute(0, 2, 1)
         #x_sys = self._batch_norm_1(x_sys) #ToDo: try batch normalization after the activation function
         #x_sys = self._linear_1(x_sys)
-        x_sys = self.actf(self._dropout(x_sys))
+        #x_sys = self.actf(self._dropout(x_sys))
         x_sys = self._batch_norm_1(x_sys)
 
         if self.args["rate"] == "onethird":
             x_p1 = self._cnn_2(inputs)
-            x_p1 = self._linear_2(x_p1) #New here
+            x_p1 = self._linear_2(x_p1)
             x_p1 = x_p1.permute(0, 2, 1)
             x_p1 = self._latent_2_1(x_p1)
+            #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
             x_p1 = self._latent_2_2(x_p1)
+            #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
             x_p1 = x_p1.permute(0, 2, 1)
             #x_p1 = self._batch_norm_2(x_p1)
             #x_p1 = self._linear_2(x_p1)
-            x_p1 = self.actf(self._dropout(x_p1))
+            #x_p1 = self.actf(self._dropout(x_p1))
             x_p1 = self._batch_norm_2(x_p1)
 
             x_inter = self._interleaver(inputs)
             x_p2 = self._cnn_3(x_inter)
-            x_p2 = self._linear_3(x_p2) #New here
+            x_p2 = self._linear_3(x_p2)
             x_p2 = x_p2.permute(0, 2, 1)
             x_p2 = self._latent_3_1(x_p2)
+            #x_p2 = self.actf(self._dropout(x_p2)) #new, could dropout lead to different sized outputs?
             x_p2 = self._latent_3_2(x_p2)
+            #x_p2 = self.actf(self._dropout(x_p2)) #new, could dropout lead to different sized outputs?
             x_p2 = x_p2.permute(0, 2, 1)
             #x_p2 = self._batch_norm_3(x_p2)
             #x_p2 = self._linear_3(x_p2)
-            x_p2 = self.actf(self._dropout(x_p2))
+            #x_p2 = self.actf(self._dropout(x_p2))
             x_p2 = self._batch_norm_3(x_p2)
 
             x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
@@ -408,11 +413,13 @@ class EncoderCNN(EncoderBase):
             x_p1 = self._linear_2(x_p1) #New here
             x_p1 = x_p1.permute(0, 2, 1)
             x_p1 = self._latent_2_1(x_p1)
+            #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
             x_p1 = self._latent_2_2(x_p1)
+            #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
             x_p1 = x_p1.permute(0, 2, 1)
             #x_p1 = self._batch_norm_2(x_p1)
             #x_p1 = self._linear_2(x_p1)
-            x_p1 = self.actf(self._dropout(x_p1))
+            #x_p1 = self.actf(self._dropout(x_p1))
             x_p1 = self._batch_norm_2(x_p1)
 
             x_o = torch.cat([x_sys, x_p1], dim=2)

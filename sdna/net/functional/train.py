@@ -108,9 +108,9 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             if mode == "all" or mode == "encoder" or mode == "decoder":
                 s_dec = torch.clamp(s_dec, 0.0, 1.0)
                 s_dec = torch.round(s_dec.detach())
-                single_acc = torch.sum(s_enc.eq(c_dec.detach())).item()
-                if i == 1:
-                    print("single accuracy: " + str(single_acc))
+                #single_acc = torch.sum(s_enc.eq(c_dec.detach())).item()
+                #if i == 1:
+                #    print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_dec.eq(x_val.detach())).item()
             else:
                 code_rate = s_enc.size()[2]
