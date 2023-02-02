@@ -119,10 +119,12 @@ class Channel(object):
             seq_enc = Channel.bits_to_sequence(x_in, shape)  # 1. => transform bits into sequence
 
             ###
+            #if i == 0:
+                #print(seq_enc)
             error_probability += self._dna_simulator.apply_detection(seq_enc)
             #error_probability += CalcLoss(seq_enc).loss
-            if i == 0:
-                print(seq_enc)
+           # if i == 0:
+               # print(seq_enc)
                 #print(error_probability)
                 #print(error_probability)
 
@@ -235,7 +237,7 @@ class CalcLoss:
                 loss += 0
                 #loss += ord(yp.lower())-96
             else:
-                loss += (ord(yp.lower()) - 96)/2 #*2 #ToDo: do it quadratic?
+                loss += (ord(yp.lower()) - 96) #/2 #*2 #ToDo: do it quadratic?
         return loss
 
     # Define a custom loss function to penalize the encoder for producing an encoded representation that is not weakly balanced

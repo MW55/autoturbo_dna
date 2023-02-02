@@ -47,6 +47,10 @@ class EncoderBase(torch.nn.Module):
             return torch.sigmoid(inputs)
         elif self.args["enc_actf"] == "identity":
             return inputs
+        elif self.args["enc_actf"] == "leakyrelu":
+            return func.leaky_relu(inputs)
+        elif self.args["enc_actf"] == "gelu":
+            return func.gelu(inputs)
         else:
             return inputs
 
@@ -290,6 +294,7 @@ class EncoderCNN(EncoderBase):
                              in_channels=1,
                              out_channels=self.args["enc_units"],
                              kernel_size=self.args["enc_kernel"])
+        '''
         self._latent_2_1 = Conv1d(self.args["enc_actf"],
                              layers=1,
                              in_channels=self.args["block_length"],
@@ -300,6 +305,7 @@ class EncoderCNN(EncoderBase):
                              in_channels=self.args["block_length"] + int(self.args["redundancy"]/2),
                              out_channels=self.args["block_length"] + int(self.args["redundancy"]),
                              kernel_size=self.args["enc_kernel"])
+        '''
         self._linear_2 = torch.nn.Linear(self.args["enc_units"], 1) #+16
 
         if self.args["rate"] == "onethird":
@@ -366,13 +372,24 @@ class EncoderCNN(EncoderBase):
         inputs = 2.0 * inputs - 1.0
 
         x_sys = self._cnn_1(inputs)
-        x_sys = self._linear_1(x_sys)
-        x_sys = x_sys.permute(0, 2, 1)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+
+        ###test
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        #x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
         x_sys = self._latent_1_1(x_sys)
-        #x_sys = self.actf(self._dropout(x_sys)) #new
         x_sys = self._latent_1_2(x_sys)
+        #x_sys = self.actf(self._dropout(self._latent_1_1(x_sys)))
+        #x_sys = self.actf(self._dropout(self._latent_1_2(x_sys)))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+        ###test over
+
+        #x_sys = x_sys.permute(0, 2, 1)
+        #x_sys = self._latent_1_1(x_sys)
         #x_sys = self.actf(self._dropout(x_sys)) #new
-        x_sys = x_sys.permute(0, 2, 1)
+        #x_sys = self._latent_1_2(x_sys)
+        #x_sys = self.actf(self._dropout(x_sys)) #new
+        #x_sys = x_sys.permute(0, 2, 1)
         #x_sys = self._batch_norm_1(x_sys) #ToDo: try batch normalization after the activation function
         #x_sys = self._linear_1(x_sys)
         #x_sys = self.actf(self._dropout(x_sys))
@@ -380,13 +397,22 @@ class EncoderCNN(EncoderBase):
 
         if self.args["rate"] == "onethird":
             x_p1 = self._cnn_2(inputs)
-            x_p1 = self._linear_2(x_p1)
-            x_p1 = x_p1.permute(0, 2, 1)
+            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            ##test
+            x_p1 = torch.flatten(x_p1, start_dim=1)
+            #x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
             x_p1 = self._latent_2_1(x_p1)
-            #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
             x_p1 = self._latent_2_2(x_p1)
+            #x_p1 = self.actf(self._dropout(self._latent_2_1(x_p1)))
+            #x_p1 = self.actf(self._dropout(self._latent_2_2(x_p1)))
+            x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
+            ###test over
+            #x_p1 = x_p1.permute(0, 2, 1)
+            #x_p1 = self._latent_2_1(x_p1)
             #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
-            x_p1 = x_p1.permute(0, 2, 1)
+            #x_p1 = self._latent_2_2(x_p1)
+            #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
+            #x_p1 = x_p1.permute(0, 2, 1)
             #x_p1 = self._batch_norm_2(x_p1)
             #x_p1 = self._linear_2(x_p1)
             #x_p1 = self.actf(self._dropout(x_p1))
@@ -394,13 +420,22 @@ class EncoderCNN(EncoderBase):
 
             x_inter = self._interleaver(inputs)
             x_p2 = self._cnn_3(x_inter)
-            x_p2 = self._linear_3(x_p2)
-            x_p2 = x_p2.permute(0, 2, 1)
+            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+            ###test
+            x_p2 = torch.flatten(x_p2, start_dim=1)
+            #x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
             x_p2 = self._latent_3_1(x_p2)
-            #x_p2 = self.actf(self._dropout(x_p2)) #new, could dropout lead to different sized outputs?
             x_p2 = self._latent_3_2(x_p2)
+            #x_p2 = self.actf(self._dropout(self._latent_3_1(x_p2)))
+            #x_p2 = self.actf(self._dropout(self._latent_3_2(x_p2)))
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+            ###test over
+            #x_p2 = x_p2.permute(0, 2, 1)
+            #x_p2 = self._latent_3_1(x_p2)
             #x_p2 = self.actf(self._dropout(x_p2)) #new, could dropout lead to different sized outputs?
-            x_p2 = x_p2.permute(0, 2, 1)
+            #x_p2 = self._latent_3_2(x_p2)
+            #x_p2 = self.actf(self._dropout(x_p2)) #new, could dropout lead to different sized outputs?
+            #x_p2 = x_p2.permute(0, 2, 1)
             #x_p2 = self._batch_norm_3(x_p2)
             #x_p2 = self._linear_3(x_p2)
             #x_p2 = self.actf(self._dropout(x_p2))
@@ -410,13 +445,20 @@ class EncoderCNN(EncoderBase):
         else:
             x_inter = self._interleaver(inputs)
             x_p1 = self._cnn_2(x_inter)
-            x_p1 = self._linear_2(x_p1) #New here
-            x_p1 = x_p1.permute(0, 2, 1)
-            x_p1 = self._latent_2_1(x_p1)
+            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            ###test
+            x_p1 = torch.flatten(x_p1, start_dim=1)
+            #x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
+            x_p1 = self.actf(self._dropout(self._latent_2_1(x_p1)))
+            x_p1 = self.actf(self._dropout(self._latent_2_2(x_p1)))
+            x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
+            ###test over
+            #x_p1 = x_p1.permute(0, 2, 1)
+            #x_p1 = self._latent_2_1(x_p1)
             #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
-            x_p1 = self._latent_2_2(x_p1)
+            #x_p1 = self._latent_2_2(x_p1)
             #x_p1 = self.actf(self._dropout(x_p1)) #new, could dropout lead to different sized outputs?
-            x_p1 = x_p1.permute(0, 2, 1)
+            #x_p1 = x_p1.permute(0, 2, 1)
             #x_p1 = self._batch_norm_2(x_p1)
             #x_p1 = self._linear_2(x_p1)
             #x_p1 = self.actf(self._dropout(x_p1))

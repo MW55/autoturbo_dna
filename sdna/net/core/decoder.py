@@ -48,6 +48,10 @@ class DecoderBase(torch.nn.Module):
             return torch.sigmoid(inputs)
         elif self.args["dec_actf"] == "identity":
             return inputs
+        elif self.args["dec_actf"] == "leakyrelu":
+            return func.leaky_relu(inputs)
+        elif self.args["dec_actf"] == "gelu":
+            return func.gelu(inputs)
         else:
             return inputs
 
@@ -302,35 +306,68 @@ class DecoderCNN(DecoderBase):
         """
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
 
-        x_sys = x_sys.permute(0, 2, 1)
-        x_sys = self._latent_1_1(x_sys)
+        #test
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        #x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+        x_sys = self.actf(self._dropout(self._latent_1_1(x_sys)))
+        x_sys = self.actf(self._dropout(self._latent_1_2(x_sys)))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        if bool(torch.isnan(x_sys).any()):
+            print("failed")
+        #test over
+
+        #x_sys = x_sys.permute(0, 2, 1)
+        #x_sys = self._latent_1_1(x_sys)
         #x_sys = self.actf(self._dropout(x_sys)) # new, could dropout lead to different sized outputs?
-        x_sys = self._latent_1_2(x_sys)
+        #x_sys = self._latent_1_2(x_sys)
         #x_sys = self.actf(self._dropout(x_sys))  # new, could dropout lead to different sized outputs?
-        x_sys = x_sys.permute(0, 2, 1)
+        #x_sys = x_sys.permute(0, 2, 1)
         #x_sys = self.actf(self._dropout(x_sys))
 
 
         x_sys_inter = self.interleaver(x_sys)
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
 
-        x_p1 = x_p1.permute(0, 2, 1)
-        x_p1 = self._latent_2_1(x_p1)
+        #test
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        #x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+        x_p1 = self.actf(self._dropout(self._latent_2_1(x_p1)))
+        x_p1 = self.actf(self._dropout(self._latent_2_2(x_p1)))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+        #test over
+
+
+        if bool(torch.isnan(x_p1).any()):
+            print("failed")
+
+        #x_p1 = x_p1.permute(0, 2, 1)
+        #x_p1 = self._latent_2_1(x_p1)
         #x_p1 = self.actf(self._dropout(x_p1))  # new, could dropout lead to different sized outputs?
-        x_p1 = self._latent_2_2(x_p1)
+        #x_p1 = self._latent_2_2(x_p1)
         #x_p1 = self.actf(self._dropout(x_p1))  # new, could dropout lead to different sized outputs?
-        x_p1 = x_p1.permute(0, 2, 1)
+        #x_p1 = x_p1.permute(0, 2, 1)
         #x_p1 = self.actf(self._dropout(x_p1))
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
 
-            x_p2 = x_p2.permute(0, 2, 1)
-            x_p2 = self._latent_3_1(x_p2)
+            #test
+            x_p2 = torch.flatten(x_p2, start_dim=1)
+            #x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+            x_p2 = self.actf(self._dropout(self._latent_3_1(x_p2)))
+            x_p2 = self.actf(self._dropout(self._latent_3_2(x_p2)))
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+            #test over
+
+            if bool(torch.isnan(x_p2).any()):
+                print("failed")
+            #x_p2 = x_p2.permute(0, 2, 1)
+            #x_p2 = self._latent_3_1(x_p2)
             #x_p2 = self.actf(self._dropout(x_p2))  # new, could dropout lead to different sized outputs?
-            x_p2 = self._latent_3_2(x_p2)
+            #x_p2 = self._latent_3_2(x_p2)
             #x_p2 = self.actf(self._dropout(x_p2))  # new, could dropout lead to different sized outputs?
-            x_p2 = x_p2.permute(0, 2, 1)
+            #x_p2 = x_p2.permute(0, 2, 1)
             #x_p2 = self.actf(self._dropout(x_p2))
         else:
             x_p1_deint = self.deinterleaver(x_p1) #ToDo: check if that is right
@@ -343,9 +380,22 @@ class DecoderCNN(DecoderBase):
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1, prior], dim=2)
                 x_dec = self._cnns_1[i](xi)
-                x = self.actf(self._dropout(self._linears_1[i](x_dec)))
+
+                if bool(torch.isnan(x_dec).any()):
+                    print("failed")
+                x_dec = self._linears_1[i](x_dec)
+                if bool(torch.isnan(x_dec).any()):
+                    print("failed")
+                x = self.actf(self._dropout(x_dec))
+
+                if bool(torch.isnan(x).any()):
+                    print("failed")
+
                 if self.args["extrinsic"]:
                     x = x - prior
+
+                if bool(torch.isnan(x).any()):
+                    print("failed")
 
                 x_inter = self.interleaver(x)
                 xi = torch.cat([x_sys_inter, x_p2, x_inter], dim=2)
@@ -371,8 +421,11 @@ class DecoderCNN(DecoderBase):
                     x = x - x_inter
 
                 prior = self.deinterleaver(x)
-        x = self._batch_norm_1(x) #new
-        x = torch.sigmoid(prior)
+        x = self._batch_norm_1(prior) #new
+        x = torch.sigmoid(x)
+
+        if bool(torch.isnan(x).any()):
+            print("failed")
 
         return x
 

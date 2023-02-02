@@ -18,9 +18,9 @@ class Homopolymers(object):
         elif homopolymer_length <= 3:
             return 0.3
         elif homopolymer_length <= 4:
-            return 0.6
+            return 0.8
         elif homopolymer_length <= 5:
-            return 0.9
+            return 1.0
         else:
             return 1.0
 
@@ -39,7 +39,12 @@ class Homopolymers(object):
         res = []
         length = len(sequence)
         counter = 0
-        base = sequence[0]
+        try:
+            base = sequence[0]
+        except:
+            print("seqlen: " + str(length))
+            exit(1)
+
         start_pos = 0
         for index in range(1, length + 1):
             if index == length or base != sequence[index]:
