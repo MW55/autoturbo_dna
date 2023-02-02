@@ -1,7 +1,7 @@
 import subprocess
 from itertools import product
 
-arguments = {
+arguments_bk = {
     'encoder': ['cnn', 'cnn_no_lat'],
     'enc-actf': ["relu", "leakyrelu"],
     'enc-dropout': [0.0, 0.2, 0.4],
@@ -25,6 +25,30 @@ arguments = {
     'batch-size': [128, 256, 512]
 }
 
+arguments = {
+    'encoder': ['cnn'],
+    'enc-actf': ["relu"],
+    'enc-dropout': [0.0, 0.2],
+    'enc-layers': [5],
+    'decoder': ['cnn'],
+    'dec-actf': ["relu"],
+    'dec-dropout': [0.0],
+    'dec-layers': [5],
+    'dec-iterations': [6],
+    'coder': ['cnn'],
+    'coder-actf': ["relu"],
+    'coder-dropout': [0.0],
+    'coder-layers': [5],
+    'lat-redundancy': [0, 2, 4],
+    'enc-lr': [0.00001, 0.000001, 0.0001, 0.001],
+    'dec-lr': [0.00001],
+    'coder-lr': [0.001],
+    'enc-steps': [1, 3, 5],
+    'dec-steps': [2],
+    'coder-steps': [5],
+    'batch-size': [2, 4, 8]
+}
+
 #coder-units 64 + redundancy!
 
 
@@ -35,7 +59,7 @@ def try_param_combinations(param_dict):
     for combination in product(*values):
         pcom = dict(zip(keys, combination))
         name = '_'.join(str(v) for v in pcom.values())
-        py_command = ("./sDNA.py --train --gpu --epochs 50 --wdir /home/wintermute/projects/autoturbo_dna/models/tuning/" + name + " --coder-units "
+        py_command = ("./sDNA.py --train --gpu --epochs 50 --wdir /home/wintermute/projects/autoturbo_dna/models/tuning_gpu/" + name + " --coder-units "
                       + str(64 + pcom["lat-redundancy"]) + " --encoder " + pcom["encoder"] +
                       " --enc-actf " + pcom["enc-actf"] + " --enc-dropout " + str(pcom["enc-dropout"]) +
                       " --enc-layers " + str(pcom["enc-layers"]) + " --decoder " + pcom["decoder"] +
@@ -46,7 +70,7 @@ def try_param_combinations(param_dict):
                       str(pcom["lat-redundancy"]) + " --enc-lr " + str(pcom["enc-lr"]) + " --dec-lr " + str(pcom["dec-lr"])
                       + " --coder-lr " + str(pcom["coder-lr"]) + " --enc-steps " + str(pcom["enc-steps"]) + " --dec-steps " + str(pcom["dec-steps"])
                       + " --coder-steps " + str(pcom["coder-steps"]) + " --batch-size " + str(pcom["batch-size"]))
-        print(py_command)
+        print(name)
         print(c)
         process = subprocess.Popen(py_command.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
