@@ -727,7 +727,7 @@ class DecoderTransformer(DecoderBase):
                                                               # only relu or gelu work as activation function
                                                               batch_first=True)
             self._transformers_1.append(torch.nn.TransformerDecoder(encoder_layer1, num_layers=self.args["dec_layers"]))
-            self._linears_1.append(torch.nn.Linear(self.args["dec_units"], self.args["dec_inputs"]))
+            self._linears_1.append(torch.nn.Linear(self.args["dec_units"], 1)) #self.args["dec_inputs"]
 
             encoder_layer2 = torch.nn.TransformerDecoderLayer(d_model=self.args["dec_units"],
                                                               nhead=self.args["dec_kernel"],
@@ -735,11 +735,11 @@ class DecoderTransformer(DecoderBase):
                                                               activation='relu',
                                                               # only relu or gelu work as activation function
                                                               batch_first=True)
-            self._transformers_1.append(torch.nn.TransformerDecoder(encoder_layer2, num_layers=self.args["dec_layers"]))
+            self._transformers_2.append(torch.nn.TransformerDecoder(encoder_layer2, num_layers=self.args["dec_layers"]))
             if i == self.args["dec_iterations"] - 1:
                 self._linears_2.append(torch.nn.Linear(self.args["dec_units"], 1))
             else:
-                self._linears_2.append(torch.nn.Linear(self.args["dec_units"], self.args["dec_inputs"]))
+                self._linears_2.append(torch.nn.Linear(self.args["dec_units"], 1)) #self.args["dec_inputs"]
 
 
     def set_interleaver_order(self, array):
@@ -770,8 +770,8 @@ class DecoderTransformer(DecoderBase):
         :return: Output tensor of decoder.
         """
         #ToDo the x_train inputs might have to be interleaved
-        inputs = inputs.permute(0, 2, 1)
-        x_train = x_train.permute(0, 2, 1)
+        #inputs = inputs.permute(0, 2, 1)
+        #x_train = x_train.permute(0, 2, 1)
 
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_sys_inter = self.interleaver(x_sys)
@@ -780,7 +780,7 @@ class DecoderTransformer(DecoderBase):
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
         else:
             x_p1_deint = self.deinterleaver(x_p1)
-        prior = torch.zeros((inputs.size()[0], inputs.size()[1], self.args["dec_inputs"]))
+        prior = torch.zeros((inputs.size()[0], inputs.size()[1], 1)) #self.args["dec_inputs"]
         if self.args["rate"] == "onethird":
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1, prior], dim=2)
@@ -795,7 +795,7 @@ class DecoderTransformer(DecoderBase):
                 xi = torch.cat([x_sys_inter, x_p2, x_inter], dim=2)
                 if self.is_parallel:
                     self._transformers_2[i].module.flatten_parameters()
-                x_dec, _ = self._transformers_2[i](x_train, xi)
+                x_dec = self._transformers_2[i](x_train, xi)
                 x = self.actf(self._dropout(self._linears_2[i](x_dec)))
                 if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
                     x = x - x_inter
@@ -815,7 +815,7 @@ class DecoderTransformer(DecoderBase):
                 xi = torch.cat([x_sys_inter, x_p1, x_inter], dim=2)
                 if self.is_parallel:
                     self._transformers_2[i].module.flatten_parameters()
-                x_dec, _ = self._transformers_2[i](x_train, xi)
+                x_dec = self._transformers_2[i](x_train, xi)
                 x = self.actf(self._dropout(self._linears_2[i](x_dec)))
                 if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
                     x = x - x_inter

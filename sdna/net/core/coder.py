@@ -399,18 +399,18 @@ class CoderTransformer(CoderBase):
         :return: Output tensor of coder.
         """
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1]))
-        x_sys = self.transformer_1(x_sys)
+        x_sys = self._transformer_1(x_sys)
         x_sys = self.actf(x_sys)
         x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1]))
-        x_p1 = self.transformer_2(x_p1)
+        x_p1 = self._transformer_2(x_p1)
         x_p1 = self.actf(x_p1)
         x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1]))
-            x_p2 = self.transformer_3(x_p2)
+            x_p2 = self._transformer_3(x_p2)
             x_p2 = self.actf(x_p2)
             x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
             return torch.cat((x_sys, x_p1, x_p2), dim=2)
