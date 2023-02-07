@@ -37,7 +37,7 @@ class Net(object):
         if not load:
             wf = func.initialize(method=self.args["init_weights"])
             if wf is not None:
-                self.model.apply(wf)     # initialize weights and biases
+                self.model.apply(wf)  # initialize weights and biases
         else:
             self.model = Net._load_model(self.args["working_dir"], self.model)
         Net._save_model(self.args["working_dir"], self.model)
@@ -48,7 +48,8 @@ class Net(object):
 
         :returns: The individual optimizers in a tuple.
         """
-        if not self.args["simultaneously_training"]:        # create separate optimizer for encoder and decoder or one for both
+        if not self.args[
+            "simultaneously_training"]:  # create separate optimizer for encoder and decoder or one for both
             enc_optimizer = Net.optimizers(self.args["enc_optimizer"])(
                 filter(lambda p: p.requires_grad, self.model.enc.parameters()), lr=self.args["enc_lr"])
             dec_optimizer = Net.optimizers(self.args["dec_optimizer"])(
@@ -56,7 +57,8 @@ class Net(object):
             ae_optimizer = None
         else:
             ae_optimizer = Net.optimizers(self.args["enc_optimizer"])(
-                filter(lambda p: p.requires_grad, list(self.model.enc.parameters()) + list(self.model.dec.parameters())), lr=self.args["enc_lr"])
+                filter(lambda p: p.requires_grad,
+                       list(self.model.enc.parameters()) + list(self.model.dec.parameters())), lr=self.args["enc_lr"])
             enc_optimizer = None
             dec_optimizer = None
 
@@ -71,14 +73,24 @@ class Net(object):
         :returns: The results of the runs are returned as a generator.
         """
         ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer = self._initialize_optimizers()
+        mult = self.args["amplifier"]
         for epoch in range(1, self.args["epochs"] + 1):
+            ##testing###
+            if epoch % 10 == 0 and mult >= 1:
+                mult -= 1
+                self.model.channel._dna_simulator._prepare_error_simulation(mult)
+                print("Error rate: " + str(sum([self.model.channel._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
+                                                for i in range(len(self.model.channel._dna_simulator.error_rates))])))
             res = dict()
-            if self.args["simultaneously_training"]:    # train modules of model simultaneously or separately from each other
+            if self.args[
+                "simultaneously_training"]:  # train modules of model simultaneously or separately from each other
                 for i in range(self.args["enc_steps"]):
-                    res["Encoder"] = res["S-Decoder"] = func.train(self.model, ae_optimizer, self.args, epoch=epoch, mode="encoder")
+                    res["Encoder"] = res["S-Decoder"] = func.train(self.model, ae_optimizer, self.args, epoch=epoch,
+                                                                   mode="encoder")
                 for i in range(self.args["coder_steps"]):
                     res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
-                res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch, mode="all")
+                res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
+                                                                                mode="all")
             else:
                 for i in range(self.args["enc_steps"]):
                     res["Encoder"] = func.train(self.model, enc_optimizer, self.args, epoch=epoch, mode="encoder")
@@ -86,7 +98,8 @@ class Net(object):
                     res["S-Decoder"] = func.train(self.model, dec_optimizer, self.args, epoch=epoch, mode="decoder")
                 for i in range(self.args["coder_steps"]):
                     res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
-                res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch, mode="all")
+                res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
+                                                                                mode="all")
 
             Net._save_model(self.args["working_dir"], self.model)
             yield res

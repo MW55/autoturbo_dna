@@ -96,8 +96,8 @@ class Channel(object):
             if np.random.randint(3) == 0:  # Account for error-free sequences
                 seq_dec = seq_enc
             else:
-                seq_dec = seq_enc #ToDo do not add noise for testing purposes
-                #seq_dec = self.apply_sequence_errors(seq_enc, p_seed, modes)     # apply mutations on sequence
+                #seq_dec = seq_enc #ToDo do not add noise for testing purposes
+                seq_dec = self.apply_sequence_errors(seq_enc, p_seed, modes)     # apply mutations on sequence
             x_out = Channel.sequence_to_bits(seq_dec, shape)  # 3. => transform sequence back into bits
             x_out[:inputs.size()[1], :] = x_out[:inputs.size()[1], :] * x_in
             x_noisy[i] = x_out      # 4. assign the difference between the bits

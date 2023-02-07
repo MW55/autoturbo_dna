@@ -196,10 +196,13 @@ class ErrorSimulation(object):
         :param errors: List of dictionaries with all error rates.
         :param modes: Restrict which modifications should be applied to the sequence.
         """
+        #cum_rate = 0.0
+        #num_errs = 0
         for rate in errors:
             self.modified = set()  # reset all modifications for each progress
             for mode in ErrorSimulation.MUTATION_MODES:
                 if modes is None or mode in modes:
+                    #cum_rate+=rate["err_rate"]["raw_rate"]
                     err_rate = rate["err_rate"]["raw_rate"] * rate["err_rate"][mode]
                     for n in range(round((len(self.sequence) * err_rate))):
                         try:
@@ -212,3 +215,6 @@ class ErrorSimulation(object):
                         except KeyError:
                             pattern = None
                         self._m_function(mode)(mode=mode, position_range=position_range, pattern=pattern)
+                        #num_errs+=1
+        #print(num_errs)
+        #print(cum_rate)

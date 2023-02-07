@@ -2,8 +2,6 @@
 
 import torch
 import torch.nn.functional as func
-from sdna.net.core.channel import Channel
-import numpy as np
 
 
 def train(model, optimizer, args, epoch=1, mode="encoder"):
@@ -88,6 +86,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
     stability = 0.0
     noise = 0.0
     code_rate = 1
+    full_corr = 0
 
     with torch.no_grad():
         for i in range(0, int(args["blocks"] / args["batch_size"])):
@@ -122,10 +121,20 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
 
             equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
             noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
+            flat_inp = x_val.detach().flatten(start_dim=1).tolist()
+            flat_outp = s_dec.detach().flatten(start_dim=1).tolist()
+            corr = 0
+            for i in range(len(flat_inp)):
+                if flat_inp[i] == flat_outp[i]:
+                    corr+=1
+            full_corr += corr/args["batch_size"]
+            #print(corr)
 
+    full_corr /= (args["blocks"] / args["batch_size"])
+    print(full_corr)
     accuracy /= (args["blocks"] * args["block_length"] * code_rate) #+ int(args["redundancy"])
     stability /= (args["blocks"] / args["batch_size"])
-    noise /= (args["blocks"] * args["block_length"] * 3.0) #ToDo multiplier is hardcoded!
+    noise /= (args["blocks"] * args["block_length"] * 3.0)
     return accuracy, stability, noise
 
 
