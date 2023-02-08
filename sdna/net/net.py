@@ -74,13 +74,14 @@ class Net(object):
         """
         ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer = self._initialize_optimizers()
         mult = self.args["amplifier"]
+        last_10_sdec_loss = []
         for epoch in range(1, self.args["epochs"] + 1):
             ##testing###
-            if epoch % 10 == 0 and mult >= 1:
-                mult -= 1
-                self.model.channel._dna_simulator._prepare_error_simulation(mult)
-                print("Error rate: " + str(sum([self.model.channel._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
-                                                for i in range(len(self.model.channel._dna_simulator.error_rates))])))
+            #if epoch % 10 == 0 and mult >= 1:
+            #    mult -= 1
+            #    self.model.channel._dna_simulator._prepare_error_simulation(mult)
+            #    print("Error rate: " + str(sum([self.model.channel._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
+            #                                    for i in range(len(self.model.channel._dna_simulator.error_rates))])))
             res = dict()
             if self.args[
                 "simultaneously_training"]:  # train modules of model simultaneously or separately from each other
@@ -100,6 +101,13 @@ class Net(object):
                     res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
                 res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
+            #if not self.args["batch_size"] >= 256:
+            #    last_10_sdec_loss.append(res["S-Decoder"])
+            #    if len(last_10_sdec_loss) >= 10:
+            #        if max(last_10_sdec_loss) - min(last_10_sdec_loss) < 0.01:
+            #            self.args["batch_size"] = self.args["batch_size"]*2
+            #            print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
+            #        del last_10_sdec_loss[0]
 
             Net._save_model(self.args["working_dir"], self.model)
             yield res

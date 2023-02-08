@@ -358,29 +358,36 @@ class CoderTransformer(CoderBase):
         """
         super(CoderTransformer, self).__init__(arguments)
 
+        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
+
         #Dropout and activation function might have to be removed, as they are used further down.
         #Also, torch might have to be updated, as it doesnt know batch first.
-        self._encoder_layer_1 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
-                                                                 nhead=self.args["enc_kernel"],
-                                                                 dropout=self.args["enc_dropout"],
+        self._encoder_layer_1 = torch.nn.TransformerEncoderLayer(d_model=self.args["coder_units"],
+                                                                 nhead=self.args["coder_kernel"],
+                                                                 dropout=self.args["coder_dropout"],
                                                                  activation='relu', #only relu or gelu work as activation function
                                                                  batch_first=True)
-        self._transformer_1 = torch.nn.TransformerEncoder(self._encoder_layer_1, num_layers=self.args["enc_layers"])
+        self._transformer_1 = torch.nn.TransformerEncoder(self._encoder_layer_1, num_layers=self.args["coder_layers"])
+        self._linear_1 = torch.nn.Linear(
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
+            self.args["block_length"])
 
-        self._encoder_layer_2 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
-                                                                 nhead=self.args["enc_kernel"],
-                                                                 dropout=self.args["enc_dropout"],
+        self._encoder_layer_2 = torch.nn.TransformerEncoderLayer(d_model=self.args["coder_units"],
+                                                                 nhead=self.args["coder_kernel"],
+                                                                 dropout=self.args["coder_dropout"],
                                                                  activation='relu', #only relu or gelu work as activation function
                                                                  batch_first=True)
-        self._transformer_2 = torch.nn.TransformerEncoder(self._encoder_layer_2, num_layers=self.args["enc_layers"])
+        self._transformer_2 = torch.nn.TransformerEncoder(self._encoder_layer_2, num_layers=self.args["coder_layers"])
+        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
 
         if self.args["rate"] == "onethird":
-            self._encoder_layer_3 = torch.nn.TransformerEncoderLayer(d_model=self.args["enc_units"],
-                                                                     nhead=self.args["enc_kernel"],
-                                                                     dropout=self.args["enc_dropout"],
+            self._encoder_layer_3 = torch.nn.TransformerEncoderLayer(d_model=self.args["coder_units"],
+                                                                     nhead=self.args["coder_kernel"],
+                                                                     dropout=self.args["coder_dropout"],
                                                                      activation='relu', #only relu or gelu work as activation function
                                                                      batch_first=True)
-            self._transformer_3 = torch.nn.TransformerEncoder(self._encoder_layer_3, num_layers=self.args["enc_layers"])
+            self._transformer_3 = torch.nn.TransformerEncoder(self._encoder_layer_3, num_layers=self.args["coder_layers"])
+            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
 
     def set_parallel(self):
         """
@@ -388,8 +395,11 @@ class CoderTransformer(CoderBase):
         """
         self._transformer_1 = torch.nn.DataParallel(self._transformer_1)
         self._transformer_2 = torch.nn.DataParallel(self._transformer_2)
+        self._linear_1 = torch.nn.DataParallel(self._linear_1)
+        self._linear_2 = torch.nn.DataParallel(self._linear_2)
         if self.args["rate"] == "onethird":
             self._transformer_3 = torch.nn.DataParallel(self._transformer_3)
+            self._linear_3 = torch.nn.DataParallel(self._linear_3)
 
     def forward(self, inputs):
         """
@@ -398,21 +408,26 @@ class CoderTransformer(CoderBase):
         :param inputs: Input tensor.
         :return: Output tensor of coder.
         """
-        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1]))
+        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_sys = self._transformer_1(x_sys)
-        x_sys = self.actf(x_sys)
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
         x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
 
-        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1]))
+        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         x_p1 = self._transformer_2(x_p1)
-        x_p1 = self.actf(x_p1)
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
         x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         if self.args["rate"] == "onethird":
-            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1]))
+            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
             x_p2 = self._transformer_3(x_p2)
-            x_p2 = self.actf(x_p2)
+            x_p2 = torch.flatten(x_p2, start_dim=1)
+            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
             x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
-            return torch.cat((x_sys, x_p1, x_p2), dim=2)
-
-        return torch.cat((x_sys, x_p1), dim=2)
+            x = torch.cat((x_sys, x_p1, x_p2), dim=2)
+        else:
+            x = torch.cat((x_sys, x_p1), dim=2)
+        x = Quantizer.apply(x)
+        return x
