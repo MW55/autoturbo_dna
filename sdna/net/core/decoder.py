@@ -961,29 +961,35 @@ class DecoderTransformer(DecoderBase):
         #x_train = x_train.permute(0, 2, 1)
 
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+        x_train_sys = x_train[:, :, 0].view((x_train.size()[0], x_train.size()[1], 1))
         x_sys_inter = self.interleaver(x_sys)
+        x_train_inter = self.interleaver(x_train_sys)
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+        x_train_p1 = x_train[:, :, 1].view((x_train.size()[0], x_train.size()[1], 1))
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+            x_train_p2 = x_train[:, :, 2].view((x_train.size()[0], x_train.size()[1], 1))
         else:
             x_p1_deint = self.deinterleaver(x_p1)
+            x_train_p1_deint = self.deinterleaver(x_train_p1)
         prior = torch.zeros((inputs.size()[0], inputs.size()[1], self.args["dec_inputs"])) #self.args["dec_inputs"]
         if self.args["rate"] == "onethird":
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1, prior], dim=2)
-                x_train_p = torch.cat([x_train, prior])
+                x_train_i = torch.cat([x_train_sys, x_train_p1, prior], dim=2) #TBH it makes little sense to put the prior (and further down, x_inter) into the encoder output part of the transformer
                 if self.is_parallel:
                     self._transformers_1[i].module.flatten_parameters()
 
-                x_dec = self._transformers_1[i](x_train_p, xi) #x_train,
+                x_dec = self._transformers_1[i](x_train_i, xi) #x_train,
                 x = self.actf(self._dropout(self._linears_1[i](x_dec)))
                 if self.args["extrinsic"]:
                     x = x - prior
                 x_inter = self.interleaver(x)
                 xi = torch.cat([x_sys_inter, x_p2, x_inter], dim=2)
+                x_train_i = torch.cat([x_train_inter, x_train_p2, x_inter], dim=2)
                 if self.is_parallel:
                     self._transformers_2[i].module.flatten_parameters()
-                x_dec = self._transformers_2[i](x_train_p, xi) #x_train,
+                x_dec = self._transformers_2[i](x_train_i, xi) #x_train,
                 x = self.actf(self._dropout(self._linears_2[i](x_dec)))
                 if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
                     x = x - x_inter
@@ -992,18 +998,20 @@ class DecoderTransformer(DecoderBase):
         else:
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1_deint, prior], dim=2)
+                x_train_i = torch.cat([x_train_sys, x_train_p1_deint, prior], dim=2)
                 if self.is_parallel:
                     self._transformers_1[i].module.flatten_parameters()
-                x_dec = self._transformers_1[i](x_train_p, xi) #x_train,
+                x_dec = self._transformers_1[i](x_train_i, xi) #x_train,
                 x = self.actf(self._dropout(self._linears_1[i](x_dec)))
                 if self.args["extrinsic"]:
                     x = x - prior
 
                 x_inter = self.interleaver(x)
                 xi = torch.cat([x_sys_inter, x_p1, x_inter], dim=2)
+                x_train_i = torch.cat([x_train_inter, x_train_p1, x_inter], dim=2)
                 if self.is_parallel:
                     self._transformers_2[i].module.flatten_parameters()
-                x_dec = self._transformers_2[i](x_train_p, xi) #x_train,
+                x_dec = self._transformers_2[i](x_train_i, xi) #x_train,
                 x = self.actf(self._dropout(self._linears_2[i](x_dec)))
                 if self.args["extrinsic"] and i != self.args["dec_iterations"] - 1:
                     x = x - x_inter

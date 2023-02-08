@@ -65,7 +65,7 @@ class AutoEncoder(torch.nn.Module):
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(c_dec, hidden, s_enc)
             elif self.args["decoder"] == "transformer":
-                s_dec = self.dec(c_dec, inputs)
+                s_dec = self.dec(c_dec, s_enc)
             else:
                 s_dec = self.dec(c_dec)  # stream decoder => in (-1, +1) | out (0, +1)
         return s_dec, s_enc, c_dec, x
