@@ -54,7 +54,8 @@ class AutoEncoder(torch.nn.Module):
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(x, hidden, s_enc)
             elif self.args["decoder"] == "transformer":
-                s_dec = self.dec(x, s_enc)
+                bin_mask = torch.ones((s_enc.size()[0], s_enc.size()[1], s_enc.size()[2]), dtype=torch.bool)
+                s_dec = self.dec(x, bin_mask)#s_enc
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
@@ -65,7 +66,8 @@ class AutoEncoder(torch.nn.Module):
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(c_dec, hidden, s_enc)
             elif self.args["decoder"] == "transformer":
-                s_dec = self.dec(c_dec, s_enc)
+                bin_mask = torch.ones((c_dec.size()[0], c_dec.size()[1], c_dec.size()[2]), dtype=torch.bool)
+                s_dec = self.dec(c_dec, bin_mask) #s_enc
             else:
                 s_dec = self.dec(c_dec)  # stream decoder => in (-1, +1) | out (0, +1)
         return s_dec, s_enc, c_dec, x

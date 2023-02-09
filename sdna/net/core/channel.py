@@ -123,8 +123,8 @@ class Channel(object):
                 #print(seq_enc)
             error_probability += self._dna_simulator.apply_detection(seq_enc)
             #error_probability += CalcLoss(seq_enc).loss
-           # if i == 0:
-               # print(seq_enc)
+            #if i == 0:
+                #print(seq_enc)
                 #print(error_probability)
                 #print(error_probability)
 
