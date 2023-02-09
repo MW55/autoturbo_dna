@@ -100,7 +100,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                 hidden = s_dec[1]
                 s_dec = s_dec[0]
             else:
-                s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch)
+                s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch, validate=True)
             #print("validate")
             stability += (1.0 - model.channel.evaluate(s_enc.detach()))
 

@@ -25,7 +25,8 @@ DECODERS = {
     "cnn": DecoderCNN,
     "rnnatt": DecoderRNNatt,
     "transformer": DecoderTransformer,
-    "cnn_nolat": DecoderCNN_nolat
+    "cnn_nolat": DecoderCNN_nolat,
+    "entransformer": DecoderEnTransformer
 }
 
 CODERS = {

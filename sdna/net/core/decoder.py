@@ -706,7 +706,7 @@ class DecoderEnTransformer(DecoderBase):
 
         :param arguments: Arguments as dictionary.
         """
-        super(DecoderTransformer, self).__init__(arguments)
+        super(DecoderEnTransformer, self).__init__(arguments)
 
         self.interleaver = Interleaver()
         self.deinterleaver = DeInterleaver()
@@ -773,7 +773,7 @@ class DecoderEnTransformer(DecoderBase):
             self._linears_1[i] = torch.nn.DataParallel(self._linears_1[i])
             self._linears_2[i] = torch.nn.DataParallel(self._linears_2[i])
 
-    def forward(self, inputs, x_train):
+    def forward(self, inputs):
         """
         Calculates output tensors from input tensors based on the process.
 

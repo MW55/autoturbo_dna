@@ -195,7 +195,7 @@ class SDNAArgs:
                                         dest='enc_rnn')
         self.net_structure.add_argument('--decoder',
                                         help='Choose which decoder to use: RNN or CNN. (default=CNN)',
-                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat'],
+                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat', 'entransformer'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
