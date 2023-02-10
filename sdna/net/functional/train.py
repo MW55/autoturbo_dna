@@ -131,7 +131,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             #print(corr)
 
     full_corr /= (args["blocks"] / args["batch_size"])
-    print(full_corr)
+    print("Correct packages percentage: " + str(full_corr))
     accuracy /= (args["blocks"] * args["block_length"] * code_rate) #+ int(args["redundancy"])
     stability /= (args["blocks"] / args["batch_size"])
     noise /= (args["blocks"] * args["block_length"] * 3.0)

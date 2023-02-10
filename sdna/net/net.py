@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
-
+from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
 import sdna.net.functional as func
 from sdna.net.core import *
 
@@ -64,6 +64,18 @@ class Net(object):
 
         coder_optimizer = Net.optimizers(self.args["coder_optimizer"])(
             filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"])
+        if self.args["decoder"] == "transformer" or self.args["decoder"] == "entransformer":
+            self.scheduler_lr_dec = torch.optim.lr_scheduler.ExponentialLR(dec_optimizer, gamma=0.9)
+            self.scheduler_dec = create_lr_scheduler_with_warmup(self.scheduler_lr_dec,
+                                                        warmup_start_value=0.0,
+                                                        warmup_end_value=0.1,
+                                                        warmup_duration=10)
+        if self.args["encoder"] == "transformer":
+            self.scheduler_lr_enc = torch.optim.lr_scheduler.ExponentialLR(enc_optimizer, gamma=0.9)
+            self.scheduler_enc = create_lr_scheduler_with_warmup(self.scheduler_lr_enc,
+                                                        warmup_start_value=0.0,
+                                                        warmup_end_value=0.1,
+                                                        warmup_duration=10)
         return ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer
 
     def train(self):
@@ -77,11 +89,12 @@ class Net(object):
         last_10_sdec_loss = []
         for epoch in range(1, self.args["epochs"] + 1):
             ##testing###
+            if epoch == 1:
             #if epoch % 10 == 0 and mult >= 1:
             #    mult -= 1
             #    self.model.channel._dna_simulator._prepare_error_simulation(mult)
-            #    print("Error rate: " + str(sum([self.model.channel._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
-            #                                    for i in range(len(self.model.channel._dna_simulator.error_rates))])))
+                 print("Error rate: " + str(sum([self.model.channel._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
+                                                for i in range(len(self.model.channel._dna_simulator.error_rates))])))
             res = dict()
             if self.args[
                 "simultaneously_training"]:  # train modules of model simultaneously or separately from each other
@@ -110,6 +123,14 @@ class Net(object):
             #        del last_10_sdec_loss[0]
 
             Net._save_model(self.args["working_dir"], self.model)
+            if self.args["decoder"] == "transformer" or self.args["decoder"] == "entransformer":
+                #self.scheduler_lr.step()
+                self.scheduler_dec(None)
+                print("learning_rate_dec: " + str(dec_optimizer.param_groups[0]['lr']))
+                #print("learning rate:" + str(self.scheduler_lr.get_last_lr()[0]))
+            if self.args["encoder"] == "tansformer":
+                self.scheduler_enc(None)
+                print("learning_rate_dec: " + str(enc_optimizer.param_groups[0]['lr']))
             yield res
 
     @staticmethod
