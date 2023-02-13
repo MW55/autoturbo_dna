@@ -57,6 +57,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
             gradient = func.binary_cross_entropy(s_dec, x_train)
             if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
                 gradient += model.channel.evaluate(s_enc) #*1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
+                if args["encoder"] == "vae":
+                    gradient += (model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3
                 #if np.random.randint(0, 2) == 0:
                 #    gradient += model.channel.evaluate(s_enc)/2
                 #else:

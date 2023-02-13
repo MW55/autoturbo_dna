@@ -833,3 +833,129 @@ class EncoderTransformer(EncoderBase):
             x_o = torch.cat([x_sys, x_inter], dim=2)
         return x_o
         """
+
+class Encoder_vae(EncoderBase):
+    def __init__(self, arguments):
+        """
+        CNN based encoder with an interleaver.
+        :param arguments: Arguments as dictionary.
+        """
+        super(Encoder_vae, self).__init__(arguments)
+
+        self._interleaver = Interleaver()
+
+        self._dropout = torch.nn.Dropout(self.args["enc_dropout"])
+
+        self._cnn_1 = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_1_1 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_1_2 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_1_3 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._cnn_2 = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_2_1 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_2_2 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_2_3 = torch.nn.Linear(self.args["enc_units"], 1)
+
+        if self.args["rate"] == "onethird":
+            self._cnn_3 = Conv1d(self.args["enc_actf"],
+                                 layers=self.args["enc_layers"],
+                                 in_channels=1,
+                                 out_channels=self.args["enc_units"],
+                                 kernel_size=self.args["enc_kernel"])
+            self._linear_3_1 = torch.nn.Linear(self.args["enc_units"], 1)
+            self._linear_3_2 = torch.nn.Linear(self.args["enc_units"], 1)
+            self._linear_3_3 = torch.nn.Linear(self.args["enc_units"], 1)
+
+        self.N_1 = torch.distributions.Normal(0, 1)
+        #self.N_1.loc = self.N_1.loc()  # self.N.loc.cuda() hack to get sampling on the GPU
+        #self.N_1.scale = self.N_1.scale() #self.N.scale.cuda()
+        self.kl_1 = 0
+
+        self.N_2 = torch.distributions.Normal(0, 1)
+        #self.N_2.loc = self.N_2.loc()  # hack to get sampling on the GPU
+        #self.N_2.scale = self.N_2.scale()
+        self.kl_2 = 0
+
+        if self.args["rate"] == "onethird":
+            self.N_3 = torch.distributions.Normal(0, 1)
+            #self.N_3.loc = self.N_3.loc()  # hack to get sampling on the GPU
+            #self.N_3.scale = self.N_3.scale()
+            self.kl_3 = 0
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+        :param array: That array that is needed to set interleaver order.
+        """
+        self._interleaver.set_order(array)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
+        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
+        self._linear_1_1 = torch.nn.DataParallel(self._linear_1_1)
+        self._linear_1_2 = torch.nn.DataParallel(self._linear_1_2)
+        self._linear_1_3 = torch.nn.DataParallel(self._linear_1_3)
+        self._linear_2_1 = torch.nn.DataParallel(self._linear_2_1)
+        self._linear_2_2 = torch.nn.DataParallel(self._linear_2_2)
+        self._linear_2_3 = torch.nn.DataParallel(self._linear_2_3)
+        if self.args["rate"] == "onethird":
+            self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
+            self._linear_3_1 = torch.nn.DataParallel(self._linear_3_1)
+            self._linear_3_2 = torch.nn.DataParallel(self._linear_3_2)
+            self._linear_3_3 = torch.nn.DataParallel(self._linear_3_3)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of encoder.
+        """
+        inputs = 2.0 * inputs - 1.0
+
+        x_sys = self._cnn_1(inputs)
+        #x_sys = self.actf(self._dropout(self._linear_1_1(x_sys)))
+        mu_1 = self._linear_1_2(x_sys)
+        sigma_1 = torch.exp(self._linear_1_3(x_sys))
+        x_sys_z = mu_1 + sigma_1*self.N_1.sample(mu_1.shape)
+        self.kl_1 = (sigma_1**2 + mu_1**2 - torch.log(sigma_1) - 1/2).sum()
+
+        if self.args["rate"] == "onethird":
+            x_p1 = self._cnn_2(inputs)
+            #x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
+            mu_2 = self._linear_2_2(x_p1)
+            sigma_2 = torch.exp(self._linear_2_3(x_p1))
+            x_p1_z = mu_2 + sigma_2 * self.N_2.sample(mu_2.shape)
+            self.kl_2 = (sigma_2 ** 2 + mu_2 ** 2 - torch.log(sigma_2) - 1 / 2).sum()
+
+            x_inter = self._interleaver(inputs)
+            x_p2 = self._cnn_3(x_inter)
+            #x_p2 = self.actf(self._dropout(self._linear_3_1(x_p2)))
+            mu_3 = self._linear_3_2(x_p2)
+            sigma_3 = torch.exp(self._linear_3_3(x_p2))
+            x_p2_z = mu_3 + sigma_3 * self.N_3.sample(mu_3.shape)
+            self.kl_3 = (sigma_3 ** 2 + mu_3 ** 2 - torch.log(sigma_3) - 1 / 2).sum()
+
+            x_o = torch.cat([x_sys_z, x_p1_z, x_p2_z], dim=2)
+        else:
+            x_inter = self._interleaver(inputs)
+            x_p1 = self._cnn_2(x_inter)
+            #x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
+            mu_2 = self._linear2_2(x_p1)
+            sigma_2 = torch.exp(self.linear_2_3(x_p1))
+            x_p1_z = mu_2 + sigma_2 * self.N_2.sample(mu_2.shape)
+            self.kl_2 = (sigma_2 ** 2 + mu_2 ** 2 - torch.log(sigma_2) - 1 / 2).sum()
+
+            x_o = torch.cat([x_sys_z, x_p1_z], dim=2)
+
+        x = EncoderBase.normalize(x_o) #The normalization probabily hinders the vae to function correctly
+        return x

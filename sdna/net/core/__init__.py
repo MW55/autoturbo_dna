@@ -17,7 +17,8 @@ ENCODERS = {
     "scnn": SysEncoderCNN,
     "rnnatt": EncoderRNNatt,
     "transformer": EncoderTransformer,
-    "cnn_nolat": EncoderCNN_nolat
+    "cnn_nolat": EncoderCNN_nolat,
+    "vae": Encoder_vae
 }
 
 DECODERS = {
