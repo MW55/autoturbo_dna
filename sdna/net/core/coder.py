@@ -380,8 +380,8 @@ class CoderCNN_RNN(CoderBase):
                                    batch_first=True)
         self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         if self.args["batch_norm"]:
-            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
-            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"])
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"])
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"])
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
@@ -393,7 +393,8 @@ class CoderCNN_RNN(CoderBase):
                                        num_layers=self.args["coder_layers"],
                                        batch_first=True)
             self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"])
     def set_parallel(self):
         """
         Ensures that forward and backward propagation operations can be performed on multiple GPUs.
@@ -423,29 +424,29 @@ class CoderCNN_RNN(CoderBase):
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_sys = self._cnn_1(x_sys)
         x_sys, _ = self._rnn_1(x_sys)
-        x_sys = torch.flatten(x_sys, start_dim=1)
-        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
         if self.args["batch_norm"]:
             x_sys = self._batch_norm_1(x_sys)
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
         x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         x_p1 = self._cnn_2(x_p1)
         x_p1, _ = self._rnn_1(x_p1)
-        x_p1 = torch.flatten(x_p1, start_dim=1)
-        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
         if self.args["batch_norm"]:
             x_p1 = self._batch_norm_1(x_p1)
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
         x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
             x_p2 = self._cnn_3(x_p2)
             x_p2, _ = self._rnn_3(x_p2)
-            x_p2 = torch.flatten(x_p2, start_dim=1)
-            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
             if self.args["batch_norm"]:
                 x_p2 = self._batch_norm_1(x_p2)
+            x_p2 = torch.flatten(x_p2, start_dim=1)
+            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
             x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
 
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
