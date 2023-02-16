@@ -404,7 +404,9 @@ class SDNAArgs:
                                        dest='simultaneously_training')
         self.net_training.add_argument('--batch-norm',
                                        help='Whether to use batch normalization or not.',
-                                       action='store_true',
+                                       type=bool,
+                                       default=False,
+                                       metavar='X',
                                        dest='batch_norm')
 
     def _dna_error_simulation(self):
