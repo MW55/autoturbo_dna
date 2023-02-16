@@ -35,7 +35,8 @@ CODERS = {
     "cnn": CoderCNN,
     "rnn": CoderRNN,
     "transformer": CoderTransformer,
-    "cnn_nolat": CoderCNN_nolat
+    "cnn_nolat": CoderCNN_nolat,
+    "cnn_rnn": CoderCNN_RNN
 }
 
 __all__ = ['AutoEncoder',

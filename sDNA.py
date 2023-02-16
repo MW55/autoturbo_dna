@@ -262,7 +262,7 @@ class SDNAArgs:
                                         dest='extrinsic')
         self.net_structure.add_argument('--coder',
                                         help='Choose which coder to use: MLP, CNN or RNN. (default=CNN)',
-                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat'],
+                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -316,7 +316,7 @@ class SDNAArgs:
         self.net_structure.add_argument('--lat-redundancy',
                                         help='Redundancy of the final encoder layer (and first decoder layer), required to account for constraints. Has to be divisible by 2',
                                         type=int,
-                                        default=8,
+                                        default=0,
                                         metavar='X',
                                         dest='redundancy')
     def _net_training(self):
@@ -402,6 +402,10 @@ class SDNAArgs:
                                        help='Whether the encoder and decoder are to be trained at the same time, if so, the learning parameters from the encoder are used. (default=off)',
                                        action='store_true',
                                        dest='simultaneously_training')
+        self.net_training.add_argument('--batch-norm',
+                                       help='Whether to use batch normalization or not.',
+                                       action='store_true',
+                                       dest='batch_norm')
 
     def _dna_error_simulation(self):
         """

@@ -284,8 +284,9 @@ class EncoderCNN(EncoderBase):
                                               self.args["block_length"] + int(self.args["redundancy"]/2))
         self._latent_2_2 = torch.nn.Linear(self.args["block_length"] + int(self.args["redundancy"]/2),
                                                 self.args["block_length"] + int(self.args["redundancy"]))
-        self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
-        self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
 
 
         self._linear_1 = torch.nn.Linear(self.args["enc_units"], 1) #+16
@@ -330,7 +331,8 @@ class EncoderCNN(EncoderBase):
                                                self.args["block_length"] + int(self.args["redundancy"] / 2))
             self._latent_3_2 = torch.nn.Linear(self.args["block_length"] + int(self.args["redundancy"] / 2),
                                                self.args["block_length"] + int(self.args["redundancy"]))
-            self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
             self._linear_3 = torch.nn.Linear(self.args["enc_units"], 1) #+16
 
     def set_interleaver_order(self, array):
@@ -353,14 +355,16 @@ class EncoderCNN(EncoderBase):
         self._latent_2_2 = torch.nn.DataParallel(self._latent_2_2)
         self._linear_1 = torch.nn.DataParallel(self._linear_1)
         self._linear_2 = torch.nn.DataParallel(self._linear_2)
-        self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
-        self._batch_norm_2 = torch.nn.DataParallel(self._batch_norm_2)
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
+            self._batch_norm_2 = torch.nn.DataParallel(self._batch_norm_2)
         if self.args["rate"] == "onethird":
             self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
             self._latent_3_1 = torch.nn.DataParallel(self._latent_3_1)
             self._latent_3_1 = torch.nn.DataParallel(self._latent_3_1)
             self._linear_3 = torch.nn.DataParallel(self._linear_3)
-            self._batch_norm_3 = torch.nn.DataParallel(self._batch_norm_3)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.DataParallel(self._batch_norm_3)
 
     def forward(self, inputs):
         """
@@ -393,7 +397,8 @@ class EncoderCNN(EncoderBase):
         #x_sys = self._batch_norm_1(x_sys) #ToDo: try batch normalization after the activation function
         #x_sys = self._linear_1(x_sys)
         #x_sys = self.actf(self._dropout(x_sys))
-        x_sys = self._batch_norm_1(x_sys)
+        if self.args["batch_norm"]:
+            x_sys = self._batch_norm_1(x_sys)
 
         if self.args["rate"] == "onethird":
             x_p1 = self._cnn_2(inputs)
@@ -416,7 +421,8 @@ class EncoderCNN(EncoderBase):
             #x_p1 = self._batch_norm_2(x_p1)
             #x_p1 = self._linear_2(x_p1)
             #x_p1 = self.actf(self._dropout(x_p1))
-            x_p1 = self._batch_norm_2(x_p1)
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
 
             x_inter = self._interleaver(inputs)
             x_p2 = self._cnn_3(x_inter)
@@ -439,7 +445,8 @@ class EncoderCNN(EncoderBase):
             #x_p2 = self._batch_norm_3(x_p2)
             #x_p2 = self._linear_3(x_p2)
             #x_p2 = self.actf(self._dropout(x_p2))
-            x_p2 = self._batch_norm_3(x_p2)
+            if self.args["batch_norm"]:
+                x_p2 = self._batch_norm_3(x_p2)
 
             x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
@@ -462,7 +469,8 @@ class EncoderCNN(EncoderBase):
             #x_p1 = self._batch_norm_2(x_p1)
             #x_p1 = self._linear_2(x_p1)
             #x_p1 = self.actf(self._dropout(x_p1))
-            x_p1 = self._batch_norm_2(x_p1)
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
 
             x_o = torch.cat([x_sys, x_p1], dim=2)
 
@@ -495,6 +503,11 @@ class EncoderCNN_nolat(EncoderBase):
                              kernel_size=self.args["enc_kernel"])
         self._linear_2 = torch.nn.Linear(self.args["enc_units"], 1)
 
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"])
+
+
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["enc_actf"],
                                  layers=self.args["enc_layers"],
@@ -502,6 +515,10 @@ class EncoderCNN_nolat(EncoderBase):
                                  out_channels=self.args["enc_units"],
                                  kernel_size=self.args["enc_kernel"])
             self._linear_3 = torch.nn.Linear(self.args["enc_units"], 1)
+
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"])
+
 
     def set_interleaver_order(self, array):
         """
@@ -518,9 +535,14 @@ class EncoderCNN_nolat(EncoderBase):
         self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
         self._linear_1 = torch.nn.DataParallel(self._linear_1)
         self._linear_2 = torch.nn.DataParallel(self._linear_2)
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
+            self._batch_norm_2 = torch.nn.DataParallel(self._batch_norm_2)
         if self.args["rate"] == "onethird":
             self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
             self._linear_3 = torch.nn.DataParallel(self._linear_3)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.DataParallel(self._batch_norm_3)
 
     def forward(self, inputs):
         """
@@ -532,14 +554,20 @@ class EncoderCNN_nolat(EncoderBase):
 
         x_sys = self._cnn_1(inputs)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+        if self.args["batch_norm"]:
+            x_sys = self._batch_norm_1(x_sys)
 
         if self.args["rate"] == "onethird":
             x_p1 = self._cnn_2(inputs)
             x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
 
             x_inter = self._interleaver(inputs)
             x_p2 = self._cnn_3(x_inter)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+            if self.args["batch_norm"]:
+                x_p2 = self._batch_norm_3(x_p2)
 
             x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
@@ -547,6 +575,8 @@ class EncoderCNN_nolat(EncoderBase):
             x_p1 = self._cnn_2(x_inter)
             x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
             x_o = torch.cat([x_sys, x_p1], dim=2)
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
 
         x = EncoderBase.normalize(x_o)
         return x
@@ -863,6 +893,11 @@ class Encoder_vae(EncoderBase):
         self._linear_2_2 = torch.nn.Linear(self.args["enc_units"], 1)
         self._linear_2_3 = torch.nn.Linear(self.args["enc_units"], 1)
 
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+
+
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["enc_actf"],
                                  layers=self.args["enc_layers"],
@@ -872,6 +907,9 @@ class Encoder_vae(EncoderBase):
             self._linear_3_1 = torch.nn.Linear(self.args["enc_units"], 1)
             self._linear_3_2 = torch.nn.Linear(self.args["enc_units"], 1)
             self._linear_3_3 = torch.nn.Linear(self.args["enc_units"], 1)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+
 
         #self.N_1 = torch.distributions.Normal(0, 1)
         self.N_1 = torch.distributions.Bernoulli(probs=torch.tensor(0.5))
@@ -911,11 +949,16 @@ class Encoder_vae(EncoderBase):
         self._linear_2_1 = torch.nn.DataParallel(self._linear_2_1)
         self._linear_2_2 = torch.nn.DataParallel(self._linear_2_2)
         self._linear_2_3 = torch.nn.DataParallel(self._linear_2_3)
+        if self.args["batch_norm"]:
+            self._batch_norm_1 =  torch.nn.DataParallel(self._batch_norm_1)
+            self._batch_norm_2 = torch.nn.DataParallel(self._batch_norm_2)
         if self.args["rate"] == "onethird":
             self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
             self._linear_3_1 = torch.nn.DataParallel(self._linear_3_1)
             self._linear_3_2 = torch.nn.DataParallel(self._linear_3_2)
             self._linear_3_3 = torch.nn.DataParallel(self._linear_3_3)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.DataParallel(self._batch_norm_3)
 
     def forward(self, inputs):
         """
@@ -931,6 +974,8 @@ class Encoder_vae(EncoderBase):
         sigma_1 = torch.exp(self._linear_1_3(x_sys))
         x_sys_z = mu_1 + sigma_1*self.N_1.sample(mu_1.shape)
         self.kl_1 = (sigma_1**2 + mu_1**2 - torch.log(sigma_1) - 1/2).sum()
+        if self.args["batch_norm"]:
+            x_sys_z = self._batch_norm_1(x_sys_z)
 
         if self.args["rate"] == "onethird":
             x_p1 = self._cnn_2(inputs)
@@ -939,6 +984,8 @@ class Encoder_vae(EncoderBase):
             sigma_2 = torch.exp(self._linear_2_3(x_p1))
             x_p1_z = mu_2 + sigma_2 * self.N_2.sample(mu_2.shape)
             self.kl_2 = (sigma_2 ** 2 + mu_2 ** 2 - torch.log(sigma_2) - 1 / 2).sum()
+            if self.args["batch_norm"]:
+                x_p1_z = self._batch_norm_2(x_p1_z)
 
             x_inter = self._interleaver(inputs)
             x_p2 = self._cnn_3(x_inter)
@@ -947,6 +994,8 @@ class Encoder_vae(EncoderBase):
             sigma_3 = torch.exp(self._linear_3_3(x_p2))
             x_p2_z = mu_3 + sigma_3 * self.N_3.sample(mu_3.shape)
             self.kl_3 = (sigma_3 ** 2 + mu_3 ** 2 - torch.log(sigma_3) - 1 / 2).sum()
+            if self.args["batch_norm"]:
+                x_p2_z = self._batch_norm_3(x_p2_z)
 
             x_o = torch.cat([x_sys_z, x_p1_z, x_p2_z], dim=2)
         else:
@@ -955,8 +1004,11 @@ class Encoder_vae(EncoderBase):
             #x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
             mu_2 = self._linear2_2(x_p1)
             sigma_2 = torch.exp(self.linear_2_3(x_p1))
+
             x_p1_z = mu_2 + sigma_2 * self.N_2.sample(mu_2.shape)
             self.kl_2 = (sigma_2 ** 2 + mu_2 ** 2 - torch.log(sigma_2) - 1 / 2).sum()
+            if self.args["batch_norm"]:
+                x_p1_z = self._batch_norm_2(x_p1_z)
 
             x_o = torch.cat([x_sys_z, x_p1_z], dim=2)
 

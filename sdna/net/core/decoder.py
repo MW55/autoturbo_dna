@@ -211,7 +211,8 @@ class DecoderCNN(DecoderBase):
         self._latent_2_2 = torch.nn.Linear(self.args["block_length"] + int(self.args["redundancy"]/2),
                                                 self.args["block_length"])
         #For now trying it after the iterative decoding, it should also be tried inside the iterative decoding or before
-        self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
         """
         self._latent_1_1 = Conv1d(self.args["dec_actf"],
                                       layers=1,
@@ -286,6 +287,8 @@ class DecoderCNN(DecoderBase):
         self._latent_1_2 = torch.nn.DataParallel(self._latent_1_2)
         self._latent_2_1 = torch.nn.DataParallel(self._latent_2_1)
         self._latent_2_2 = torch.nn.DataParallel(self._latent_2_2)
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
         if self.args["rate"] == "onethird":
             self._latent_3_1 = torch.nn.DataParallel(self._latent_3_1)
             self._latent_3_2 = torch.nn.DataParallel(self._latent_3_2)
@@ -421,7 +424,8 @@ class DecoderCNN(DecoderBase):
                     x = x - x_inter
 
                 prior = self.deinterleaver(x)
-        x = self._batch_norm_1(prior) #new
+        if self.args["batch_norm"]:
+            x = self._batch_norm_1(prior) #new
         x = torch.sigmoid(x)
 
         if bool(torch.isnan(x).any()):
@@ -447,6 +451,9 @@ class DecoderCNN_nolat(DecoderBase):
         self._cnns_2 = torch.nn.ModuleList()
         self._linears_1 = torch.nn.ModuleList()
         self._linears_2 = torch.nn.ModuleList()
+
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
 
         for i in range(self.args["dec_iterations"]):
             self._cnns_1.append(Conv1d(self.args["dec_actf"],
@@ -478,6 +485,8 @@ class DecoderCNN_nolat(DecoderBase):
         Ensures that forward and backward propagation operations can be performed on multiple GPUs.
         """
         self.is_parallel = True
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
         for i in range(self.args["dec_iterations"]):
             self._cnns_1[i] = torch.nn.DataParallel(self._cnns_1[i])
             self._cnns_2[i] = torch.nn.DataParallel(self._cnns_2[i])
@@ -532,7 +541,8 @@ class DecoderCNN_nolat(DecoderBase):
                     x = x - x_inter
 
                 prior = self.deinterleaver(x)
-
+        if self.args["batch_norm"]:
+            x = self._batch_norm_1(prior)
         x = torch.sigmoid(prior)
         return x
 
