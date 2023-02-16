@@ -193,6 +193,12 @@ class SDNAArgs:
                                         default='GRU',
                                         metavar='CHOICE',
                                         dest='enc_rnn')
+        self.net_structure.add_argument('--vae-beta',
+                                        help='The beta multiplier of the Kullback–Leibler divergence if using a VAE.',
+                                        type=float,
+                                        default=0.0,
+                                        metavar='X',
+                                        dest='beta')
         self.net_structure.add_argument('--decoder',
                                         help='Choose which decoder to use: RNN or CNN. (default=CNN)',
                                         choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat', 'entransformer'],

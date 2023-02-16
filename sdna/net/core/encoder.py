@@ -873,18 +873,21 @@ class Encoder_vae(EncoderBase):
             self._linear_3_2 = torch.nn.Linear(self.args["enc_units"], 1)
             self._linear_3_3 = torch.nn.Linear(self.args["enc_units"], 1)
 
-        self.N_1 = torch.distributions.Normal(0, 1)
-        #self.N_1.loc = self.N_1.loc()  # self.N.loc.cuda() hack to get sampling on the GPU
+        #self.N_1 = torch.distributions.Normal(0, 1)
+        self.N_1 = torch.distributions.Bernoulli(probs=torch.tensor(0.5))
+        #self.N_1.loc = self.N_1.loc()  # self.N.loc.cuda() hack to get sampling on the GP
         #self.N_1.scale = self.N_1.scale() #self.N.scale.cuda()
         self.kl_1 = 0
 
-        self.N_2 = torch.distributions.Normal(0, 1)
+        #self.N_2 = torch.distributions.Normal(0, 1)
+        self.N_2 = torch.distributions.Bernoulli(probs=torch.tensor(0.5))
         #self.N_2.loc = self.N_2.loc()  # hack to get sampling on the GPU
         #self.N_2.scale = self.N_2.scale()
         self.kl_2 = 0
 
         if self.args["rate"] == "onethird":
-            self.N_3 = torch.distributions.Normal(0, 1)
+            #self.N_3 = torch.distributions.Normal(0, 1)
+            self.N_3 = torch.distributions.Bernoulli(probs=torch.tensor(0.5))
             #self.N_3.loc = self.N_3.loc()  # hack to get sampling on the GPU
             #self.N_3.scale = self.N_3.scale()
             self.kl_3 = 0
