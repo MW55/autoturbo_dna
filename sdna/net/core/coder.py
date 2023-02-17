@@ -538,3 +538,48 @@ class CoderTransformer(CoderBase):
             x = torch.cat((x_sys, x_p1), dim=2)
         x = Quantizer.apply(x)
         return x
+
+class CoderCNN_conc(CoderBase):
+    def __init__(self, arguments):
+        """
+        CNN based network. Used to reconstruct the code stream from the encoder after
+        applying the noisy channel.
+        :param arguments: Arguments as dictionary.
+        """
+        super(CoderCNN_conc, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
+        self._cnn = Conv1d(self.args["coder_actf"],
+                           layers=self.args["coder_layers"],
+                           in_channels=1,
+                           out_channels=self.args["coder_units"],
+                           kernel_size=self.args["coder_kernel"])
+        self._linear = torch.nn.Linear(self.args["coder_units"] * 3 * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]*3)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn = torch.nn.DataParallel(self._cnn)
+        self._linear = torch.nn.DataParallel(self._linear)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of coder.
+        """
+        #x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+        #x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+        #x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+        x = inputs.transpose(1, 2).reshape(self.args["batch_size"], -1, 1)
+        #concatenated = torch.cat([x_sys, x_p1, x_p2], dim=1)
+        #concatenated = concatenated.reshape((inputs.size()[0], (self.args["block_length"]+self.args["block_padding"])*3, 1))
+
+        #x = inputs.view((inputs.size()[0], inputs.size()[1] * 3, 1))
+        x = self._cnn(x)
+        x = torch.flatten(x, start_dim=1)
+        x = self.actf(self._dropout(self._linear(x)))
+        x = x.reshape((inputs.size()[0], self.args["block_length"], 3))
+        x = Quantizer.apply(x)
+        return x

@@ -311,7 +311,6 @@ class DecoderCNN(DecoderBase):
 
         #test
         x_sys = torch.flatten(x_sys, start_dim=1)
-        #x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
         x_sys = self.actf(self._dropout(self._latent_1_1(x_sys)))
         x_sys = self.actf(self._dropout(self._latent_1_2(x_sys)))
         x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
