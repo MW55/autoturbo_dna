@@ -376,28 +376,15 @@ class DecoderCNN(DecoderBase):
 
 
 
-        prior = torch.zeros((inputs.size()[0], inputs.size()[1]-int(self.args["redundancy"]), self.args["dec_inputs"])) #todo: -16 is hardcoded latent rendundancy! Has to be made an argurment
+        prior = torch.zeros((inputs.size()[0], inputs.size()[1]-int(self.args["redundancy"]), self.args["dec_inputs"]))
 
         if self.args["rate"] == "onethird":
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1, prior], dim=2)
                 x_dec = self._cnns_1[i](xi)
-
-                if bool(torch.isnan(x_dec).any()):
-                    print("failed")
-                x_dec = self._linears_1[i](x_dec)
-                if bool(torch.isnan(x_dec).any()):
-                    print("failed")
-                x = self.actf(self._dropout(x_dec))
-
-                if bool(torch.isnan(x).any()):
-                    print("failed")
-
+                x = self.actf(self._dropout(self._linears_1[i](x_dec)))
                 if self.args["extrinsic"]:
                     x = x - prior
-
-                if bool(torch.isnan(x).any()):
-                    print("failed")
 
                 x_inter = self.interleaver(x)
                 xi = torch.cat([x_sys_inter, x_p2, x_inter], dim=2)
@@ -407,7 +394,7 @@ class DecoderCNN(DecoderBase):
                     x = x - x_inter
 
                 prior = self.deinterleaver(x)
-        else: # Todo: Check if this is actually correct
+        else:
             for i in range(self.args["dec_iterations"]):
                 xi = torch.cat([x_sys, x_p1_deint, prior], dim=2)
                 x_dec = self._cnns_1[i](xi)
@@ -424,12 +411,8 @@ class DecoderCNN(DecoderBase):
 
                 prior = self.deinterleaver(x)
         if self.args["batch_norm"]:
-            x = self._batch_norm_1(prior) #new
-        x = torch.sigmoid(x)
-
-        if bool(torch.isnan(x).any()):
-            print("failed")
-
+            x = self._batch_norm_1(prior)
+        x = torch.sigmoid(prior)
         return x
 
 # CNN Decoder with de/interleaver

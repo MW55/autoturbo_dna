@@ -1135,6 +1135,11 @@ class Encoder_vae_lat(EncoderBase):
         """
         inputs = 2.0 * inputs - 1.0
 
+        #x_sys = torch.flatten(inputs, start_dim=1)
+        #x_sys = self._latent_1_1(x_sys)
+        #x_sys = self._latent_1_2(x_sys)
+        #x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
+
         x_sys = self._cnn_1(inputs)
 
         #x_sys = torch.flatten(x_sys, start_dim=1)
@@ -1156,6 +1161,11 @@ class Encoder_vae_lat(EncoderBase):
             x_sys_z = self._batch_norm_1(x_sys_z)
 
         if self.args["rate"] == "onethird":
+            #x_p1 = torch.flatten(inputs, start_dim=1)
+            #x_p1 = self._latent_2_1(x_p1)
+            #x_p1 = self._latent_2_2(x_p1)
+            #x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
+
             x_p1 = self._cnn_2(inputs)
             # x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
 
@@ -1178,6 +1188,12 @@ class Encoder_vae_lat(EncoderBase):
                 x_p1_z = self._batch_norm_2(x_p1_z)
 
             x_inter = self._interleaver(inputs)
+
+            #x_p2 = torch.flatten(x_inter, start_dim=1)
+            #x_p2 = self._latent_3_1(x_p2)
+            #x_p2 = self._latent_3_2(x_p2)
+            #x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
+
             x_p2 = self._cnn_3(x_inter)
 
             #x_p2 = torch.flatten(x_p2, start_dim=1)
@@ -1203,10 +1219,10 @@ class Encoder_vae_lat(EncoderBase):
             x_inter = self._interleaver(inputs)
             x_p1 = self._cnn_2(x_inter)
 
-            #x_p1 = torch.flatten(x_p1, start_dim=1)
-            #x_p1 = self.actf(self._dropout(self._latent_2_1(x_p1)))
-            #x_p1 = self.actf(self._dropout(self._latent_2_2(x_p1)))
-            #x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
+            x_p1 = torch.flatten(x_p1, start_dim=1)
+            x_p1 = self.actf(self._dropout(self._latent_2_1(x_p1)))
+            x_p1 = self.actf(self._dropout(self._latent_2_2(x_p1)))
+            x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
 
             # x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
             mu_2 = self._linear2_2(x_p1)
@@ -1217,12 +1233,12 @@ class Encoder_vae_lat(EncoderBase):
             if self.args["batch_norm"]:
                 x_p1_z = self._batch_norm_2(x_p1_z)
 
-            x_p1_z = torch.flatten(x_p1_z, start_dim=1)
-            x_p1_z = self._latent_2_1(x_p1_z)
-            x_p1_z = self._latent_2_2(x_p1_z)
-            x_p1_z = x_p1_z.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
+            #x_p1_z = torch.flatten(x_p1_z, start_dim=1)
+            #x_p1_z = self._latent_2_1(x_p1_z)
+            #x_p1_z = self._latent_2_2(x_p1_z)
+            #x_p1_z = x_p1_z.reshape((inputs.size()[0], self.args["block_length"] + int(self.args["redundancy"]), 1))
 
             x_o = torch.cat([x_sys_z, x_p1_z], dim=2)
 
-        x = EncoderBase.normalize(x_o)  # The normalization probabily hinders the vae to function correctly
+        x = EncoderBase.normalize(x_o)
         return x

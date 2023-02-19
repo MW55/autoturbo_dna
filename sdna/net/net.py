@@ -64,7 +64,7 @@ class Net(object):
 
         coder_optimizer = Net.optimizers(self.args["coder_optimizer"])(
             filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"])
-        if self.args["decoder"] == "transformer" or self.args["decoder"] == "entransformer":
+        if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":
             self.scheduler_lr_dec = torch.optim.lr_scheduler.ExponentialLR(dec_optimizer, gamma=0.9)
             self.scheduler_dec = create_lr_scheduler_with_warmup(self.scheduler_lr_dec,
                                                         warmup_start_value=0.0,
@@ -123,7 +123,7 @@ class Net(object):
             #        del last_10_sdec_loss[0]
 
             Net._save_model(self.args["working_dir"], self.model)
-            if self.args["decoder"] == "transformer" or self.args["decoder"] == "entransformer":
+            if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":
                 #self.scheduler_lr.step()
                 self.scheduler_dec(None)
                 print("learning_rate_dec: " + str(dec_optimizer.param_groups[0]['lr']))
