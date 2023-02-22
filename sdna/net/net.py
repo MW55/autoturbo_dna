@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
-from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
+#from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
 import sdna.net.functional as func
 from sdna.net.core import *
 

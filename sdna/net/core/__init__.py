@@ -19,7 +19,8 @@ ENCODERS = {
     "transformer": EncoderTransformer,
     "cnn_nolat": EncoderCNN_nolat,
     "vae": Encoder_vae,
-    "vae_lat": Encoder_vae_lat
+    "vae_lat": Encoder_vae_lat,
+    "gnn": EncoderGNN
 }
 
 DECODERS = {

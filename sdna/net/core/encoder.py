@@ -2,6 +2,7 @@
 
 from sdna.net.core.interleaver import *
 from sdna.net.core.layers import *
+from torch_geometric.nn import GCNConv, global_add_pool
 
 
 class EncoderBase(torch.nn.Module):
@@ -1264,3 +1265,68 @@ class Encoder_vae_lat(EncoderBase):
         x = EncoderBase.normalize(x_o)
         return x
 
+class EncoderGNN(EncoderBase):
+    def __init__(self, arguments):
+        super(EncoderGNN, self).__init__(arguments)
+        print("init 1")
+        self.num_layers = self.args["enc_layers"]
+        self.hidden_size = self.args["enc_units"]
+        self.dropout = self.args["enc_dropout"]
+
+        # define the GCN layers
+        self.convs = torch.nn.ModuleList()
+        self.convs.append(GCNConv(1, self.hidden_size))
+        for i in range(self.num_layers - 1):
+            self.convs.append(GCNConv(self.hidden_size, self.hidden_size))
+        print("init 2")
+        # define the linear layers
+        self.lins = nn.ModuleList()
+        self.lins.append(nn.Linear(self.hidden_size, 1))
+        for i in range(self.num_layers - 1):
+            self.lins.append(nn.Linear(self.hidden_size, 1))
+
+        self.interleaver = Interleaver()
+
+    def set_interleaver_order(self, array):
+        self.interleaver.set_order(array)
+
+    def set_parallel(self):
+        pass
+
+    def forward(self, inputs):
+        print("1")
+        inputs = 2.0 * inputs - 1.0
+        x = inputs
+
+        # apply GCN layers
+        for i in range(self.num_layers):
+            x = self.convs[i](x)
+            x = torch.nn.functional.relu(x)
+            x = torch.nn.functional.dropout(x, p=self.dropout, training=self.training)
+
+        # apply linear layers
+        sys_output = self.lins[0](global_add_pool(x, inputs.batch))
+        sys_output = torch.nn.functional.relu(sys_output)
+
+        print("2")
+        if self.args["rate"] == "onethird":
+            p1_output = self.lins[1](global_add_pool(x, inputs.batch))
+            p1_output = torch.nn.functional.relu(p1_output)
+
+            x_inter = self.interleaver(inputs)
+            x = x_inter
+
+            for i in range(self.num_layers):
+                x = self.convs[i](x)
+                x = torch.nn.functional.relu(x)
+                x = torch.nn.functional.dropout(x, p=self.dropout, training=self.training)
+
+            p2_output = self.lins[2](global_add_pool(x, x_inter.batch))
+            p2_output = torch.nn.functional.relu(p2_output)
+
+            output = torch.cat([sys_output, p1_output, p2_output], dim=1)
+        else:
+            output = sys_output
+
+        output = EncoderBase.normalize(output)
+        return output
