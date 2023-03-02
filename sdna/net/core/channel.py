@@ -58,6 +58,9 @@ class Channel(object):
 
         :note: The channel should actually only simulate DNA errors, the others are purely suitable for testing.
         """
+        #test
+        padding=0
+        #test_over
         if channel.lower() == "dna":
             return self._dna_channel(inputs, padding, seed)
         elif channel.lower() == "bec":      # binary erasure channel
