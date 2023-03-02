@@ -2,6 +2,7 @@
 
 import torch
 import numpy as np
+from collections import defaultdict
 
 from sdna.sim import *
 
@@ -104,7 +105,7 @@ class Channel(object):
         x = torch.from_numpy(x_noisy)
         return x
 
-    def evaluate(self, inputs):
+    def evaluate(self, inputs, kl=None):
         """
         Determines how susceptible the given input is to DNA errors.
 
@@ -116,12 +117,16 @@ class Channel(object):
         error_probability = 0.0
         for i, code in enumerate(inputs):
             x_in = code.cpu().detach().numpy()  # tensor can never be copied directly from the GPU to numpy structure
+            #if not np.any(x_in):
+            #    print("all 0")
             seq_enc = Channel.bits_to_sequence(x_in, shape)  # 1. => transform bits into sequence
 
             ###
             #if i == 0:
-                #print(seq_enc)
+            #    print(seq_enc)
             error_probability += self._dna_simulator.apply_detection(seq_enc)
+            if kl:
+                error_probability += kl.calculate_kl_divergence(seq_enc)
             #error_probability += CalcLoss(seq_enc).loss
             #if i == 0:
                 #print(seq_enc)
@@ -244,7 +249,7 @@ class CalcLoss:
     def balance_loss(self, y_true, y_pred):
         zero_count = 0
         for yp in y_pred:
-            if yp == 'A':
+            if yp == 'A' or yp == "T":
                 zero_count += 1
         balance = zero_count / len(y_pred)
         if balance < 0.4 or balance > 0.6:
@@ -259,3 +264,38 @@ class CalcLoss:
             if pattern in ''.join(y_pred):
                 loss += 1
         return loss
+
+
+class MarkovModelKL:
+    def __init__(self, order):
+        self.order = order
+        self.symbol_probs = defaultdict(lambda: defaultdict(int))
+
+    def fit(self, codeword_path):
+        with open(codeword_path, "r") as fasta:
+            for line in fasta.readlines():
+                if not line.startswith(">"):
+                    sequence = line.strip()
+                    for i in range(self.order, len(sequence)):
+                        preceding_sequence = sequence[i-self.order:i]
+                        symbol = sequence[i]
+                        self.symbol_probs[preceding_sequence][symbol] += 1
+            for preceding_sequence in self.symbol_probs:
+                total_count = sum(self.symbol_probs[preceding_sequence].values())
+                for symbol in self.symbol_probs[preceding_sequence]:
+                    self.symbol_probs[preceding_sequence][symbol] /= total_count
+
+    def calculate_kl_divergence(self, sequence):
+        kl_divergence = 0.0
+        for i in range(self.order, len(sequence)):
+            preceding_sequence = sequence[i-self.order:i]
+            symbol = sequence[i]
+            if preceding_sequence not in self.symbol_probs:
+                continue
+            encoded_probs = torch.zeros(len(self.symbol_probs[preceding_sequence])) + 1e-9
+            if symbol in self.symbol_probs[preceding_sequence]:
+                encoded_probs[list(self.symbol_probs[preceding_sequence].keys()).index(symbol)] = 1.0 - (len(self.symbol_probs[preceding_sequence]) * 1e-9)
+            empirical_probs = torch.tensor(list(self.symbol_probs[preceding_sequence].values()))
+            kl_divergence += torch.sum(empirical_probs * (torch.log(empirical_probs) - torch.log(encoded_probs)))
+        kl_divergence /= len(sequence)
+        return kl_divergence if kl_divergence != float('inf') else torch.tensor(0.0)

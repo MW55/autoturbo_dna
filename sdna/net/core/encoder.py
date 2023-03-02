@@ -2,7 +2,7 @@
 
 from sdna.net.core.interleaver import *
 from sdna.net.core.layers import *
-from torch_geometric.nn import GCNConv, global_add_pool
+#from torch_geometric.nn import GCNConv, global_add_pool
 
 
 class EncoderBase(torch.nn.Module):
@@ -884,6 +884,9 @@ class Encoder_vae(EncoderBase):
         :param arguments: Arguments as dictionary.
         """
         super(Encoder_vae, self).__init__(arguments)
+        #test
+        self.final_actf = ForbiddenSeqActivation()
+        #test done
 
         self._interleaver = Interleaver()
 
@@ -1030,6 +1033,7 @@ class Encoder_vae(EncoderBase):
         #x_o = self.gumbel_softmax(x_o, 1.0)
         #test done
         x = EncoderBase.normalize(x_o)
+        #x = self.final_actf.forward(x)
         return x
 
 class Encoder_vae_lat(EncoderBase):
