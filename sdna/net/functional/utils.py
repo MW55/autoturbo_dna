@@ -45,7 +45,7 @@ def decode(args, net, in_seq=None):
         inp_ = args["bitdec"]
     else:
         inp_ = in_seq
-    if args["rate"] == "onthird":
+    if args["rate"] == "onethird":
         dim = 3
     elif args["rate"] == "onehalf":
         dim = 2
@@ -59,7 +59,11 @@ def decode(args, net, in_seq=None):
     ao = np.random.mtrand.RandomState(args["seed"]).permutation(np.arange(args["block_length"]))
     net.model.dec.set_interleaver_order(ao)
     y_t = net.model.coder(x)
-    y = net.model.dec(y_t)
+    if args["decoder"] == "transformer":
+        #bin_mask = torch.ones((1, y_t.size()[1], 3), dtype=torch.bool)
+        y = net.model.dec(y_t, y_t)
+    else:
+        y = net.model.dec(y_t)
 
     # polish decoded code
     y = torch.round(torch.clamp(y, 0.0, 1.0)).cpu().detach().numpy()

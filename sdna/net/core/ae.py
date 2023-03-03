@@ -24,7 +24,7 @@ class AutoEncoder(torch.nn.Module):
         self.coder = coder
         self.channel = channel
 
-    def forward(self, inputs, padding=0, seed=0, hidden=None):
+    def forward(self, inputs, padding=0, seed=0, hidden=None, validate=False):
         """
         Calculates output tensors from input tensors based on the process.
 
@@ -53,6 +53,9 @@ class AutoEncoder(torch.nn.Module):
             c_dec = []
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(x, hidden, s_enc)
+            elif self.args["decoder"] == "transformer":
+                #bin_mask = torch.ones((s_enc.size()[0], s_enc.size()[1], s_enc.size()[2]), dtype=torch.bool)
+                s_dec = self.dec(x, s_enc)#s_enc
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
@@ -62,6 +65,11 @@ class AutoEncoder(torch.nn.Module):
             c_dec = self.coder(x)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(c_dec, hidden, s_enc)
+            elif self.args["decoder"] == "transformer":
+                if validate:
+                    s_dec = self.dec(c_dec, c_dec)
+                else:
+                    s_dec = self.dec(c_dec, s_enc) #s_enc
             else:
                 s_dec = self.dec(c_dec)  # stream decoder => in (-1, +1) | out (0, +1)
         return s_dec, s_enc, c_dec, x

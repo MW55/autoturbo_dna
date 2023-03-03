@@ -150,7 +150,7 @@ class SDNAArgs:
                                         dest='block_padding')
         self.net_structure.add_argument('--encoder',
                                         help='Choose which encoder to use: RNN, SRNN, CNN, SCNN or RNNatt. (default=CNN)',
-                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt'],
+                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt', 'transformer', 'cnn_nolat', 'vae', 'vae_lat', 'gnn'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -163,7 +163,7 @@ class SDNAArgs:
                                         dest='enc_units')
         self.net_structure.add_argument('--enc-actf',
                                         help='Choose which activation function should be applied to the encoder: tanh, elu, relu, selu, sigmoid or identity. (default=elu)',
-                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity'],
+                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity', 'leakyrelu', 'gelu'],
                                         type=str.lower,
                                         default='elu',
                                         metavar='CHOICE',
@@ -193,9 +193,15 @@ class SDNAArgs:
                                         default='GRU',
                                         metavar='CHOICE',
                                         dest='enc_rnn')
+        self.net_structure.add_argument('--vae-beta',
+                                        help='The beta multiplier of the Kullback–Leibler divergence if using a VAE.',
+                                        type=float,
+                                        default=0.0,
+                                        metavar='X',
+                                        dest='beta')
         self.net_structure.add_argument('--decoder',
                                         help='Choose which decoder to use: RNN or CNN. (default=CNN)',
-                                        choices=['rnn', 'cnn', 'rnnatt'],
+                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat', 'entransformer'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -208,7 +214,7 @@ class SDNAArgs:
                                         dest='dec_units')
         self.net_structure.add_argument('--dec-actf',
                                         help='Choose which activation function should be applied to the decoder: tanh, elu, relu, selu, sigmoid or identity. (default=identity)',
-                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity'],
+                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity', 'leakyrelu', 'gelu'],
                                         type=str.lower,
                                         default='identity',
                                         metavar='CHOICE',
@@ -256,7 +262,7 @@ class SDNAArgs:
                                         dest='extrinsic')
         self.net_structure.add_argument('--coder',
                                         help='Choose which coder to use: MLP, CNN or RNN. (default=CNN)',
-                                        choices=['mlp', 'cnn', 'rnn'],
+                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn', 'cnn_conc'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -269,7 +275,7 @@ class SDNAArgs:
                                         dest='coder_units')
         self.net_structure.add_argument('--coder-actf',
                                         help='Choose which activation function should be applied to the coder: tanh, elu, relu, selu, sigmoid or identity. (default=elu)',
-                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity'],
+                                        choices=['tanh', 'elu', 'relu', 'selu', 'sigmoid', 'identity', 'leakyrelu', 'gelu'],
                                         type=str.lower,
                                         default='elu',
                                         metavar='CHOICE',
@@ -307,7 +313,12 @@ class SDNAArgs:
                                         default=None,
                                         metavar='CHOICE',
                                         dest='init_weights')
-
+        self.net_structure.add_argument('--lat-redundancy',
+                                        help='Redundancy of the final encoder layer (and first decoder layer), required to account for constraints. Has to be divisible by 2',
+                                        type=int,
+                                        default=0,
+                                        metavar='X',
+                                        dest='redundancy')
     def _net_training(self):
         """
         Function to generate the arguments for 'NN training parameters'.
@@ -391,6 +402,12 @@ class SDNAArgs:
                                        help='Whether the encoder and decoder are to be trained at the same time, if so, the learning parameters from the encoder are used. (default=off)',
                                        action='store_true',
                                        dest='simultaneously_training')
+        self.net_training.add_argument('--batch-norm',
+                                       help='Whether to use batch normalization or not.',
+                                       type=bool,
+                                       default=False,
+                                       metavar='X',
+                                       dest='batch_norm')
 
     def _dna_error_simulation(self):
         """

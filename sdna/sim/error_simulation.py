@@ -2,6 +2,7 @@
 
 import re
 import numpy as np
+import random
 
 from sdna.sim.core import *
 
@@ -196,12 +197,25 @@ class ErrorSimulation(object):
         :param errors: List of dictionaries with all error rates.
         :param modes: Restrict which modifications should be applied to the sequence.
         """
+        #cum_rate = 0.0
+        #num_errs = 0
         for rate in errors:
             self.modified = set()  # reset all modifications for each progress
             for mode in ErrorSimulation.MUTATION_MODES:
                 if modes is None or mode in modes:
+
+                    #cum_rate+=rate["err_rate"]["raw_rate"]
                     err_rate = rate["err_rate"]["raw_rate"] * rate["err_rate"][mode]
-                    for n in range(round((len(self.sequence) * err_rate))):
+                    err_num_list = range(round((len(self.sequence) * err_rate)))
+                    #This is new to account for rare errors
+                    if not err_num_list:
+                        c = 0
+                        for i in range(len(self.sequence)):
+                            if random.random() < err_rate:
+                                c += 1
+                        err_num_list = range(c)
+                    #new done
+                    for n in err_num_list: #range(round((len(self.sequence) * err_rate))):
                         try:
                             position_range = np.random.choice(list(rate["err_attributes"][mode]["position"].keys()),
                                                               p=list(rate["err_attributes"][mode]["position"].values()))
@@ -212,3 +226,6 @@ class ErrorSimulation(object):
                         except KeyError:
                             pattern = None
                         self._m_function(mode)(mode=mode, position_range=position_range, pattern=pattern)
+                        #num_errs+=1
+        #print(num_errs)
+        #print(cum_rate)

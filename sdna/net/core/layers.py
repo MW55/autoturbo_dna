@@ -94,6 +94,10 @@ class Conv1d(torch.nn.Module):
             return torch.sigmoid(inputs)
         elif self._actf == "identity":
             return inputs
+        elif self._actf == "leakyrelu":
+            return func.leaky_relu(inputs)
+        elif self._actf == "gelu":
+            return func.gelu(inputs)
         else:
             return inputs
 
@@ -111,3 +115,38 @@ class Conv1d(torch.nn.Module):
 
         x = torch.transpose(x_t, 1, 2)
         return x
+
+
+
+
+class ForbiddenSeqActivation(torch.nn.Module):
+    def __init__(self, window_size=8):
+        super(ForbiddenSeqActivation, self).__init__()
+        # Define the forbidden sequences
+        self.forbidden_seqs = [
+            [-1, -1, -1, -1, -1, -1, -1, -1],
+            [-1, 1, -1, 1, -1, 1, -1, 1],
+            [1, -1, 1, -1, 1, -1, 1, -1],
+            [1, 1, 1, 1, 1, 1, 1, 1]
+        ]
+        self.window_size = window_size
+
+    def forward(self, x):
+        # Convert the input tensor to a list of sequences
+        input_seqs = x.tolist()
+        # Iterate over each sequence and apply sliding window
+        for i, seq in enumerate(input_seqs):
+            for j in range(len(seq) - self.window_size + 1):
+                window = seq[j:j+self.window_size]
+                for forbidden_seq in self.forbidden_seqs:
+                    if window == forbidden_seq:
+                        # Replace the last value in the forbidden subsequence with its opposite sign
+                        last_val = window[-1]
+                        new_last_val = -last_val
+                        input_seqs[i][j+self.window_size-1] = new_last_val
+        # Convert the modified input back to a tensor and apply the ReLU activation function
+        output_tensor = torch.tensor(input_seqs)
+        output_tensor = torch.relu(output_tensor)
+        return output_tensor
+
+
