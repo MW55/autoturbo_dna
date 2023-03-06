@@ -24,8 +24,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         hidden = model.enc.initHidden()
 
     #testing
-    kl = MarkovModelKL(3)
-    kl.fit("/home/wintermute/projects/autoturbo_dna/eval/cw_40_60_hp3.fasta")
+    #kl = MarkovModelKL(3)
+    #kl.fit("/home/wintermute/projects/autoturbo_dna/eval/cw_40_60_hp3.fasta")
     #done
 
     for i in range(0, int(args["blocks"] / args["batch_size"])):
@@ -62,10 +62,10 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
             if args['encoder'] == 'rnnatt':
                 hidden = s_dec[1]
             gradient = func.binary_cross_entropy(s_dec, x_train)
-            if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
-                gradient += model.channel.evaluate(s_enc) #kl, *1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
-                if args["encoder"] == "vae":
-                    gradient += args['beta']*((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
+            #if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
+            #    gradient += model.channel.evaluate(s_enc) #kl, *1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
+            #    if args["encoder"] == "vae":
+            #        gradient += args['beta']*((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
                 #if np.random.randint(0, 2) == 0:
                 #    gradient += model.channel.evaluate(s_enc)/2
                 #else:

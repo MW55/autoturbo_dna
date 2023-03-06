@@ -122,6 +122,11 @@ class Net(object):
             #            print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
             #        del last_10_sdec_loss[0]
 
+            if epoch % 100 == 0 and not self.args["batch_size"] >= 1024:
+                self.args["batch_size"] = self.args["batch_size"]*2
+                print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
+
+
             Net._save_model(self.args["working_dir"], self.model)
             if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":
                 #self.scheduler_lr.step()

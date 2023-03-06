@@ -39,7 +39,8 @@ CODERS = {
     "transformer": CoderTransformer,
     "cnn_nolat": CoderCNN_nolat,
     "cnn_rnn": CoderCNN_RNN,
-    "cnn_conc": CoderCNN_conc
+    "cnn_conc": CoderCNN_conc,
+    "cnn_ensemble": EnsembleCNN
 }
 
 __all__ = ['AutoEncoder',

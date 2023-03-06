@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from sdna.net.core.layers import *
-
+import numpy as np
 
 class CoderBase(torch.nn.Module):
     def __init__(self, arguments):
@@ -365,27 +365,27 @@ class CoderCNN_nolat(CoderBase):
                              in_channels=1,
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
-        #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
+        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
-        #self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        self._linear_2 = torch.nn.Linear(
-            self.args["coder_units"] * (self.args["block_length"]),
-            self.args["block_length"])
+        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        #self._linear_2 = torch.nn.Linear(
+        #    self.args["coder_units"] * (self.args["block_length"]),
+        #    self.args["block_length"])
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
                                  out_channels=self.args["coder_units"],
                                  kernel_size=self.args["coder_kernel"])
-            #self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-            self._linear_3 = torch.nn.Linear(
-                self.args["coder_units"] * (self.args["block_length"]),
-                self.args["block_length"])
+            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+            #self._linear_3 = torch.nn.Linear(
+            #    self.args["coder_units"] * (self.args["block_length"]),
+            #    self.args["block_length"])
 
     def set_parallel(self):
         """
@@ -665,3 +665,50 @@ class CoderCNN_conc(CoderBase):
         x = x.reshape((inputs.size()[0], self.args["block_length"], 3))
         x = Quantizer.apply(x)
         return x
+
+
+class EnsembleCNN(CoderBase):
+    def __init__(self, arguments):
+        """
+        Ensemble of CNN based networks. Used to reconstruct the code stream from the encoder after
+        applying the noisy channel.
+        :param arguments: Arguments as dictionary.
+        """
+        super(EnsembleCNN, self).__init__(arguments)
+
+        self.n_models = self.args['n_models']
+        self.models = torch.nn.ModuleList([CoderCNN_nolat(self.args) for i in range(self.n_models)])
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of coder.
+        """
+        '''
+        outputs = []
+        for i in range(self.n_models):
+            outputs.append(self.models[i].forward(inputs).detach().numpy())
+        #x = torch.mean(torch.stack(outputs), dim=0)
+        x = np.apply_along_axis(lambda y: np.argmax(np.bincount(y)), axis=0, arr=outputs)
+        #x = self.ensemble_predict()
+        '''
+        outputs = []
+        for i in range(self.n_models):
+            outputs.append(self.models[i].forward(inputs))
+
+        outputs = torch.stack(outputs)  # shape: (n_models, batch_size, sequence_length, num_classes)
+        x = torch.mode(outputs, dim=0).values  # shape: (batch_size, sequence_length, num_classes)
+        return x
+
+    def ensemble_predict(self, inp, models):
+        outputs = []
+        for model in models:
+            model.eval()
+            with torch.no_grad():
+                output = model(inp)
+                output = torch.round(output).permute(2, 0, 1)
+                outputs.append(output)
+        outputs = torch.stack(outputs, dim=0)
+        majority = torch.mode(outputs, dim=0).values.permute(1, 2, 0)
+        return majority

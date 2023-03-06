@@ -59,7 +59,13 @@ class AutoEncoder(torch.nn.Module):
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
-            #x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
+            #x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
+            #x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
+            x = x.permute(0, 2, 1)
+            #x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
+            x = func.pad(x, (0, padding), mode='circular')
+            x = x.permute(0, 2, 1)
+
             x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
             #x += noise                # some noise must be additive applied (only for testing)
             c_dec = self.coder(x)       # channel decoder => in (-1, 0, +1) | out (-1, +1)

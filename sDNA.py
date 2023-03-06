@@ -262,7 +262,7 @@ class SDNAArgs:
                                         dest='extrinsic')
         self.net_structure.add_argument('--coder',
                                         help='Choose which coder to use: MLP, CNN or RNN. (default=CNN)',
-                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn', 'cnn_conc'],
+                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn', 'cnn_conc', 'cnn_ensemble'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -319,6 +319,12 @@ class SDNAArgs:
                                         default=0,
                                         metavar='X',
                                         dest='redundancy')
+        self.net_structure.add_argument('--ens_models',
+                                        help='If ensemble coders are used, defines the number of coder instances in the ensemble.',
+                                        type=int,
+                                        default=3,
+                                        metavar='X',
+                                        dest='n_models')
     def _net_training(self):
         """
         Function to generate the arguments for 'NN training parameters'.
