@@ -200,7 +200,7 @@ class ErrorSimulation(object):
         """
         #cum_rate = 0.0
         #num_errs = 0
-        print(self.indel_multiplier)
+        #print(self.indel_multiplier)
         for rate in errors:
             self.modified = set()  # reset all modifications for each progress
             for mode in ErrorSimulation.MUTATION_MODES:

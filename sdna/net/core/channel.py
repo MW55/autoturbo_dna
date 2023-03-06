@@ -58,9 +58,6 @@ class Channel(object):
 
         :note: The channel should actually only simulate DNA errors, the others are purely suitable for testing.
         """
-        #test
-        #padding=0
-        #test_over
         if channel.lower() == "dna":
             return self._dna_channel(inputs, padding, seed)
         elif channel.lower() == "bec":      # binary erasure channel
@@ -90,6 +87,7 @@ class Channel(object):
         if padding <= 0:
             modes = ["mismatch"]
             padding = 0
+        #padding=0
         shape = (inputs.size()[0], inputs.size()[1] + padding, inputs.size()[2])
 
         x_noisy = np.empty(shape, dtype=np.float32)
