@@ -87,15 +87,22 @@ class Net(object):
         ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer = self._initialize_optimizers()
         mult = self.args["amplifier"]
         last_10_sdec_loss = []
+        indel_mult = 10
+        self.model.channel._dna_simulator.indel_multiplier = indel_mult
         for epoch in range(1, self.args["epochs"] + 1):
             ##testing###
             if epoch == 1:
-            #if epoch % 10 == 0 and mult >= 1:
+            #if epoch % 100 == 0 and mult >= 1:
             #    mult -= 1
             #    self.model.channel._dna_simulator._prepare_error_simulation(mult)
                  print("Error rate: " + str(sum([self.model.channel._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
                                                 for i in range(len(self.model.channel._dna_simulator.error_rates))])))
             res = dict()
+            #
+            if epoch % 100 == 0 and indel_mult >= 1:
+                indel_mult -= 1
+                self.model.channel._dna_simulator.indel_multiplier = indel_mult
+             #
             if self.args[
                 "simultaneously_training"]:  # train modules of model simultaneously or separately from each other
                 for i in range(self.args["enc_steps"]):

@@ -15,6 +15,7 @@ class Sim(object):
         self.args = arguments
         self._prepare_error_detection()
         self._prepare_error_simulation(self.args["amplifier"])
+        self.indel_multiplier = 1
 
     def _prepare_error_detection(self):
         """
@@ -62,6 +63,7 @@ class Sim(object):
         :returns: Modified sequence as string.
         """
         seq_err = ErrorSimulation(sequence, seed=seed)
+        seq_err.indel_multiplier = self.indel_multiplier
         seq_err.apply_mutations_by_source(self.error_rates, modes)
         return seq_err.sequence
 

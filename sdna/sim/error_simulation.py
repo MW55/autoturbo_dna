@@ -20,6 +20,7 @@ class ErrorSimulation(object):
         """
         self.sequence = sequence
         self.modified = set()
+        self.indel_multiplier = 1
         np.random.seed(seed if seed is not None else 0)
 
     def _m_function(self, mode):
@@ -199,6 +200,7 @@ class ErrorSimulation(object):
         """
         #cum_rate = 0.0
         #num_errs = 0
+        print(self.indel_multiplier)
         for rate in errors:
             self.modified = set()  # reset all modifications for each progress
             for mode in ErrorSimulation.MUTATION_MODES:
@@ -206,6 +208,8 @@ class ErrorSimulation(object):
 
                     #cum_rate+=rate["err_rate"]["raw_rate"]
                     err_rate = rate["err_rate"]["raw_rate"] * rate["err_rate"][mode]
+                    if mode in ["insertion", "deletion"]:
+                        err_rate = err_rate*self.indel_multiplier
                     err_num_list = range(round((len(self.sequence) * err_rate)))
                     #This is new to account for rare errors
                     if not err_num_list:
@@ -214,7 +218,7 @@ class ErrorSimulation(object):
                             if random.random() < err_rate:
                                 c += 1
                         err_num_list = range(c)
-                    #new done
+
                     for n in err_num_list: #range(round((len(self.sequence) * err_rate))):
                         try:
                             position_range = np.random.choice(list(rate["err_attributes"][mode]["position"].keys()),
