@@ -606,13 +606,13 @@ class EncoderCNN_nolat(EncoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["enc_dropout"])
 
-        self._cnn_1 = Conv1d_inc_kernel(self.args["enc_actf"],
+        self._cnn_1 = Conv1d(self.args["enc_actf"],
                              layers=self.args["enc_layers"],
                              in_channels=1,
                              out_channels=self.args["enc_units"],
                              kernel_size=self.args["enc_kernel"])
         self._linear_1 = torch.nn.Linear(self.args["enc_units"], 1)
-        self._cnn_2 = Conv1d_inc_kernel(self.args["enc_actf"],
+        self._cnn_2 = Conv1d(self.args["enc_actf"],
                              layers=self.args["enc_layers"],
                              in_channels=1,
                              out_channels=self.args["enc_units"],
@@ -625,7 +625,7 @@ class EncoderCNN_nolat(EncoderBase):
 
 
         if self.args["rate"] == "onethird":
-            self._cnn_3 = Conv1d_inc_kernel(self.args["enc_actf"],
+            self._cnn_3 = Conv1d(self.args["enc_actf"],
                                  layers=self.args["enc_layers"],
                                  in_channels=1,
                                  out_channels=self.args["enc_units"],

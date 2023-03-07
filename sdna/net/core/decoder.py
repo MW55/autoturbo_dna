@@ -566,13 +566,13 @@ class DecoderCNN_nolat(DecoderBase):
             self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
 
         for i in range(self.args["dec_iterations"]):
-            self._cnns_1.append(Conv1d_inc_kernel(self.args["dec_actf"],
+            self._cnns_1.append(Conv1d(self.args["dec_actf"],
                                        layers=self.args["dec_layers"],
                                        in_channels=2 + self.args["dec_inputs"],
                                        out_channels=self.args["dec_units"],
                                        kernel_size=self.args["dec_kernel"]))
             self._linears_1.append(torch.nn.Linear(self.args["dec_units"], self.args["dec_inputs"]))
-            self._cnns_2.append(Conv1d_inc_kernel(self.args["dec_actf"],
+            self._cnns_2.append(Conv1d(self.args["dec_actf"],
                                        layers=self.args["dec_layers"],
                                        in_channels=2 + self.args["dec_inputs"],
                                        out_channels=self.args["dec_units"],
