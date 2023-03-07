@@ -349,6 +349,113 @@ class CoderCNN_nolat(CoderBase):
         return x
 '''
 # CNN Coder
+'''
+class CoderCNN_nolat(CoderBase):
+    def __init__(self, arguments):
+        """
+        CNN based network. Used to reconstruct the code stream from the encoder after
+        applying the noisy channel.
+        :param arguments: Arguments as dictionary.
+        """
+        super(CoderCNN_nolat, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
+
+        self._cnn_1_0 = Conv1d(self.args["coder_actf"],
+                             layers=int(self.args["coder_layers"]/2),
+                             in_channels=1,
+                             out_channels=self.args["coder_units"],
+                             kernel_size=int(self.args["coder_kernel"]/2))
+
+        self._cnn_1 = Conv1d(self.args["coder_actf"],
+                             layers=int(self.args["coder_layers"]/2),
+                             in_channels=self.args["coder_units"],
+                             out_channels=self.args["coder_units"],
+                             kernel_size=self.args["coder_kernel"])
+        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
+
+        self._cnn_2_0 = Conv1d(self.args["coder_actf"],
+                             layers=int(self.args["coder_layers"]/2),
+                             in_channels=1,
+                             out_channels=self.args["coder_units"],
+                             kernel_size=int(self.args["coder_kernel"]/2))
+
+        self._cnn_2 = Conv1d(self.args["coder_actf"],
+                             layers=int(self.args["coder_layers"]/2),
+                             in_channels=self.args["coder_units"],
+                             out_channels=self.args["coder_units"],
+                             kernel_size=self.args["coder_kernel"])
+        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        #self._linear_2 = torch.nn.Linear(
+        #    self.args["coder_units"] * (self.args["block_length"]),
+        #    self.args["block_length"])
+        if self.args["rate"] == "onethird":
+            self._cnn_3_0 = Conv1d(self.args["coder_actf"],
+                                   layers=int(self.args["coder_layers"] / 2),
+                                   in_channels=1,
+                                   out_channels=self.args["coder_units"],
+                                   kernel_size=int(self.args["coder_kernel"] / 2))
+
+            self._cnn_3 = Conv1d(self.args["coder_actf"],
+                                 layers=int(self.args["coder_layers"]),
+                                 in_channels=self.args["coder_units"],
+                                 out_channels=self.args["coder_units"],
+                                 kernel_size=self.args["coder_kernel"])
+            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+            #self._linear_3 = torch.nn.Linear(
+            #    self.args["coder_units"] * (self.args["block_length"]),
+            #    self.args["block_length"])
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn_1_0 = torch.nn.DataParallel(self._cnn_1_0)
+        self._cnn_2_0 = torch.nn.DataParallel(self._cnn_2_0)
+        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
+        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
+        self._linear_1 = torch.nn.DataParallel(self._linear_1)
+        self._linear_2 = torch.nn.DataParallel(self._linear_2)
+        if self.args["rate"] == "onethird":
+            self._cnn_3_0 = torch.nn.DataParallel(self._cnn_3_0)
+            self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
+            self._linear_3 = torch.nn.DataParallel(self._linear_3)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of coder.
+        """
+        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+        x_sys = self._cnn_1_0(x_sys)
+        x_sys = self._cnn_1(x_sys)
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+        x_p1 = self._cnn_2_0(x_p1)
+        x_p1 = self._cnn_2(x_p1)
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        if self.args["rate"] == "onethird":
+            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+            x_p2 = self._cnn_3_0(x_p2)
+            x_p2 = self._cnn_3(x_p2)
+            x_p2 = torch.flatten(x_p2, start_dim=1)
+            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+            x = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        else:
+            x = torch.cat([x_sys, x_p1], dim=2)
+        x = Quantizer.apply(x)
+        return x
+'''
 class CoderCNN_nolat(CoderBase):
     def __init__(self, arguments):
         """
@@ -631,7 +738,7 @@ class CoderCNN_conc(CoderBase):
         super(CoderCNN_conc, self).__init__(arguments)
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
-        self._cnn = Conv1d(self.args["coder_actf"],
+        self._cnn = Conv1d_inc_kernel(self.args["coder_actf"],
                            layers=self.args["coder_layers"],
                            in_channels=1,
                            out_channels=self.args["coder_units"],

@@ -488,8 +488,7 @@ class EncoderCNN(EncoderBase):
 
         x = EncoderBase.normalize(x_o)
         return x
-
-# CNN Encoder with interleaver
+'''
 class EncoderCNN_nolat(EncoderBase):
     def __init__(self, arguments):
         """
@@ -522,6 +521,111 @@ class EncoderCNN_nolat(EncoderBase):
 
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["enc_actf"],
+                                 layers=self.args["enc_layers"],
+                                 in_channels=1,
+                                 out_channels=self.args["enc_units"],
+                                 kernel_size=self.args["enc_kernel"])
+            self._linear_3 = torch.nn.Linear(self.args["enc_units"], 1)
+
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"])
+
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+        :param array: That array that is needed to set interleaver order.
+        """
+        self._interleaver.set_order(array)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
+        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
+        self._linear_1 = torch.nn.DataParallel(self._linear_1)
+        self._linear_2 = torch.nn.DataParallel(self._linear_2)
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
+            self._batch_norm_2 = torch.nn.DataParallel(self._batch_norm_2)
+        if self.args["rate"] == "onethird":
+            self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
+            self._linear_3 = torch.nn.DataParallel(self._linear_3)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.DataParallel(self._batch_norm_3)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of encoder.
+        """
+        inputs = 2.0 * inputs - 1.0
+
+        x_sys = self._cnn_1(inputs)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+        if self.args["batch_norm"]:
+            x_sys = self._batch_norm_1(x_sys)
+
+        if self.args["rate"] == "onethird":
+            x_p1 = self._cnn_2(inputs)
+            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
+
+            x_inter = self._interleaver(inputs)
+            x_p2 = self._cnn_3(x_inter)
+            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+            if self.args["batch_norm"]:
+                x_p2 = self._batch_norm_3(x_p2)
+
+            x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        else:
+            x_inter = self._interleaver(inputs)
+            x_p1 = self._cnn_2(x_inter)
+            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
+            x_o = torch.cat([x_sys, x_p1], dim=2)
+
+
+        x = EncoderBase.normalize(x_o)
+        return x
+    '''
+# CNN Encoder with interleaver
+class EncoderCNN_nolat(EncoderBase):
+    def __init__(self, arguments):
+        """
+        CNN based encoder with an interleaver.
+        :param arguments: Arguments as dictionary.
+        """
+        super(EncoderCNN_nolat, self).__init__(arguments)
+
+        self._interleaver = Interleaver()
+
+        self._dropout = torch.nn.Dropout(self.args["enc_dropout"])
+
+        self._cnn_1 = Conv1d_inc_kernel(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_1 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._cnn_2 = Conv1d_inc_kernel(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_2 = torch.nn.Linear(self.args["enc_units"], 1)
+
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"])
+
+
+        if self.args["rate"] == "onethird":
+            self._cnn_3 = Conv1d_inc_kernel(self.args["enc_actf"],
                                  layers=self.args["enc_layers"],
                                  in_channels=1,
                                  out_channels=self.args["enc_units"],
@@ -876,7 +980,187 @@ class EncoderTransformer(EncoderBase):
             x_o = torch.cat([x_sys, x_inter], dim=2)
         return x_o
         """
+'''
+class Encoder_vae(EncoderBase):
+    def __init__(self, arguments):
+        """
+        CNN based encoder with an interleaver.
+        :param arguments: Arguments as dictionary.
+        """
+        super(Encoder_vae, self).__init__(arguments)
+        #test
+        self.final_actf = ForbiddenSeqActivation()
+        #test done
 
+        self._interleaver = Interleaver()
+
+        self._dropout = torch.nn.Dropout(self.args["enc_dropout"])
+
+        self._cnn_1_0 = Conv1d(self.args["enc_actf"],
+                             layers=int(self.args["enc_layers"]/2),
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=int(self.args["enc_kernel"]/2))
+        self._cnn_1 = Conv1d(self.args["enc_actf"],
+                             layers=int(self.args["enc_layers"] / 2),
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_1_1 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_1_2 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_1_3 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._cnn_2_0 = Conv1d(self.args["enc_actf"],
+                             layers=int(self.args["enc_layers"]/2),
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=int(self.args["enc_kernel"]/2))
+        self._cnn_2 = Conv1d(self.args["enc_actf"],
+                             layers=int(self.args["enc_layers"] / 2),
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_2_1 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_2_2 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_2_3 = torch.nn.Linear(self.args["enc_units"], 1)
+
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+
+
+        if self.args["rate"] == "onethird":
+            self._cnn_3_0 = Conv1d(self.args["enc_actf"],
+                                   layers=int(self.args["enc_layers"] / 2),
+                                   in_channels=1,
+                                   out_channels=self.args["enc_units"],
+                                   kernel_size=int(self.args["enc_kernel"] / 2))
+            self._cnn_3 = Conv1d(self.args["enc_actf"],
+                                 layers=int(self.args["enc_layers"] / 2),
+                                 in_channels=self.args["enc_units"],
+                                 out_channels=self.args["enc_units"],
+                                 kernel_size=self.args["enc_kernel"])
+            self._linear_3_1 = torch.nn.Linear(self.args["enc_units"], 1)
+            self._linear_3_2 = torch.nn.Linear(self.args["enc_units"], 1)
+            self._linear_3_3 = torch.nn.Linear(self.args["enc_units"], 1)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+
+
+        #self.N_1 = torch.distributions.Normal(0, 1)
+        self.N_1 = torch.distributions.Bernoulli(probs=torch.tensor(0.5))
+        #self.N_1.loc = self.N_1.loc()  # self.N.loc.cuda() hack to get sampling on the GP
+        #self.N_1.scale = self.N_1.scale() #self.N.scale.cuda()
+        self.kl_1 = 0
+
+        #self.N_2 = torch.distributions.Normal(0, 1)
+        self.N_2 = torch.distributions.Bernoulli(probs=torch.tensor(0.5))
+        #self.N_2.loc = self.N_2.loc()  # hack to get sampling on the GPU
+        #self.N_2.scale = self.N_2.scale()
+        self.kl_2 = 0
+
+        if self.args["rate"] == "onethird":
+            #self.N_3 = torch.distributions.Normal(0, 1)
+            self.N_3 = torch.distributions.Bernoulli(probs=torch.tensor(0.5))
+            #self.N_3.loc = self.N_3.loc()  # hack to get sampling on the GPU
+            #self.N_3.scale = self.N_3.scale()
+            self.kl_3 = 0
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+        :param array: That array that is needed to set interleaver order.
+        """
+        self._interleaver.set_order(array)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn_1_0 = torch.nn.DataParallel(self._cnn_1_0)
+        self._cnn_2_0 = torch.nn.DataParallel(self._cnn_2_0)
+        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
+        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
+        self._linear_1_1 = torch.nn.DataParallel(self._linear_1_1)
+        self._linear_1_2 = torch.nn.DataParallel(self._linear_1_2)
+        self._linear_1_3 = torch.nn.DataParallel(self._linear_1_3)
+        self._linear_2_1 = torch.nn.DataParallel(self._linear_2_1)
+        self._linear_2_2 = torch.nn.DataParallel(self._linear_2_2)
+        self._linear_2_3 = torch.nn.DataParallel(self._linear_2_3)
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
+            self._batch_norm_2 = torch.nn.DataParallel(self._batch_norm_2)
+        if self.args["rate"] == "onethird":
+            self._cnn_3_0 = torch.nn.DataParallel(self._cnn_3_0)
+            self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
+            self._linear_3_1 = torch.nn.DataParallel(self._linear_3_1)
+            self._linear_3_2 = torch.nn.DataParallel(self._linear_3_2)
+            self._linear_3_3 = torch.nn.DataParallel(self._linear_3_3)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.DataParallel(self._batch_norm_3)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of encoder.
+        """
+        inputs = 2.0 * inputs - 1.0
+
+        x_sys = self._cnn_1_0(inputs)
+        x_sys = self._cnn_1(x_sys)
+        #x_sys = self.actf(self._dropout(self._linear_1_1(x_sys)))
+        mu_1 = self._linear_1_2(x_sys)
+        sigma_1 = torch.exp(self._linear_1_3(x_sys))
+        x_sys_z = mu_1 + sigma_1*self.N_1.sample(mu_1.shape)
+        self.kl_1 = (sigma_1**2 + mu_1**2 - torch.log(sigma_1) - 1/2).sum()
+        if self.args["batch_norm"]:
+            x_sys_z = self._batch_norm_1(x_sys_z)
+
+        if self.args["rate"] == "onethird":
+            x_p1 = self._cnn_2_0(inputs)
+            x_p1 = self._cnn_2(x_p1)
+            mu_2 = self._linear_2_2(x_p1)
+            sigma_2 = torch.exp(self._linear_2_3(x_p1))
+            x_p1_z = mu_2 + sigma_2 * self.N_2.sample(mu_2.shape)
+
+            self.kl_2 = (sigma_2 ** 2 + mu_2 ** 2 - torch.log(sigma_2) - 1 / 2).sum()
+            if self.args["batch_norm"]:
+                x_p1_z = self._batch_norm_2(x_p1_z)
+
+            x_inter = self._interleaver(inputs)
+            x_p2 = self._cnn_3_0(x_inter)
+            x_p2 = self._cnn_3(x_p2)
+            #x_p2 = self.actf(self._dropout(self._linear_3_1(x_p2)))
+            mu_3 = self._linear_3_2(x_p2)
+            sigma_3 = torch.exp(self._linear_3_3(x_p2))
+            x_p2_z = mu_3 + sigma_3 * self.N_3.sample(mu_3.shape)
+
+            self.kl_3 = (sigma_3 ** 2 + mu_3 ** 2 - torch.log(sigma_3) - 1 / 2).sum()
+            if self.args["batch_norm"]:
+                x_p2_z = self._batch_norm_3(x_p2_z)
+
+            x_o = torch.cat([x_sys_z, x_p1_z, x_p2_z], dim=2)
+        else:
+            x_inter = self._interleaver(inputs)
+            x_p1 = self._cnn_2(x_inter)
+            #x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
+            mu_2 = self._linear2_2(x_p1)
+            sigma_2 = torch.exp(self.linear_2_3(x_p1))
+
+            x_p1_z = mu_2 + sigma_2 * self.N_2.sample(mu_2.shape)
+            self.kl_2 = (sigma_2 ** 2 + mu_2 ** 2 - torch.log(sigma_2) - 1 / 2).sum()
+            if self.args["batch_norm"]:
+                x_p1_z = self._batch_norm_2(x_p1_z)
+
+            x_o = torch.cat([x_sys_z, x_p1_z], dim=2)
+
+        #test
+        #x_o = self.gumbel_softmax(x_o, 1.0)
+        #test done
+        x = EncoderBase.normalize(x_o)
+        #x = self.final_actf.forward(x)
+        return x
+'''
 class Encoder_vae(EncoderBase):
     def __init__(self, arguments):
         """
@@ -1334,3 +1618,147 @@ class EncoderGNN(EncoderBase):
 
         output = EncoderBase.normalize(output)
         return output
+
+
+class EncoderCNN_kernel_increase(EncoderBase):
+    def __init__(self, arguments):
+        """
+        CNN based encoder with an interleaver.
+        :param arguments: Arguments as dictionary.
+        """
+        super(EncoderCNN_kernel_increase, self).__init__(arguments)
+
+        self._interleaver = Interleaver()
+
+        self._dropout = torch.nn.Dropout(self.args["enc_dropout"])
+
+        # First CNN with half the kernel size of the second
+        self._cnn_1a = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=(self.args["enc_kernel"]//2),
+                              padding=(self.args["enc_kernel"] // 2) - (self.args["enc_kernel"] // 4))
+        self._linear_1a = torch.nn.Linear(self.args["enc_units"], 1)
+        self._cnn_1b = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_1b = torch.nn.Linear(self.args["enc_units"], 1)
+
+        # Second CNN with half the kernel size of the first
+        self._cnn_2a = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=(self.args["enc_kernel"]//2),
+                            padding=(self.args["enc_kernel"] // 2) - (self.args["enc_kernel"] // 4))
+        self._linear_2a = torch.nn.Linear(self.args["enc_units"], 1)
+        self._cnn_2b = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+        self._linear_2b = torch.nn.Linear(self.args["enc_units"], 1)
+
+        if self.args["batch_norm"]:
+            self._batch_norm_1a = torch.nn.BatchNorm1d(self.args["block_length"])
+            self._batch_norm_1b = torch.nn.BatchNorm1d(self.args["block_length"])
+            self._batch_norm_2a = torch.nn.BatchNorm1d(self.args["block_length"])
+            self._batch_norm_2b = torch.nn.BatchNorm1d(self.args["block_length"])
+
+        if self.args["rate"] == "onethird":
+            self._cnn_3a = Conv1d(self.args["enc_actf"],
+                                 layers=self.args["enc_layers"],
+                                 in_channels=1,
+                                 out_channels=self.args["enc_units"],
+                                 kernel_size=self.args["enc_kernel"]//2,
+                                  padding=(self.args["enc_kernel"] // 2) - (self.args["enc_kernel"] // 4))
+            self._linear_3a = torch.nn.Linear(self.args["enc_units"], 1)
+            self._cnn_3b = Conv1d(self.args["enc_actf"],
+                                 layers=self.args["enc_layers"],
+                                 in_channels=1,
+                                 out_channels=self.args["enc_units"],
+                                 kernel_size=self.args["enc_kernel"])
+            self._linear_3b = torch.nn.Linear(self.args["enc_units"], 1)
+
+            if self.args["batch_norm"]:
+                self._batch_norm_3a = torch.nn.BatchNorm1d(self.args["block_length"])
+                self._batch_norm_3b = torch.nn.BatchNorm1d(self.args["block_length"])
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+        :param array: That array that is needed to set interleaver order.
+        """
+        self._interleaver.set_order(array)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn_1a = torch.nn.DataParallel(self._cnn_1a)
+        self._cnn_2a = torch.nn.DataParallel(self._cnn_2a)
+        self._linear_1a = torch.nn.DataParallel(self._linear_1a)
+        self._linear_2a = torch.nn.DataParallel(self._linear_2a)
+        self._cnn_1b = torch.nn.DataParallel(self._cnn_1b)
+        self._cnn_2b = torch.nn.DataParallel(self._cnn_2b)
+        self._linear_1b = torch.nn.DataParallel(self._linear_1b)
+        self._linear_2b = torch.nn.DataParallel(self._linear_2b)
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.DataParallel(self._batch_norm_1)
+            self._batch_norm_2 = torch.nn.DataParallel(self._batch_norm_2)
+        if self.args["rate"] == "onethird":
+            self._cnn_3a = torch.nn.DataParallel(self._cnn_3a)
+            self._linear_3a = torch.nn.DataParallel(self._linear_3a)
+            self._cnn_3b = torch.nn.DataParallel(self._cnn_3b)
+            self._linear_3b = torch.nn.DataParallel(self._linear_3b)
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.DataParallel(self._batch_norm_3)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of encoder.
+        """
+        inputs = 2.0 * inputs - 1.0
+
+        x_sys = self._cnn_1a(inputs)
+        x_sys = self._linear_1a(x_sys)
+        x_sys = self._cnn_1b(x_sys)
+        x_sys = self.actf(self._dropout(self._linear_1b(x_sys)))
+        if self.args["batch_norm"]:
+            x_sys = self._batch_norm_1(x_sys)
+
+        if self.args["rate"] == "onethird":
+            x_p1 = self._cnn_2a(inputs)
+            x_p1 = self._linear_2a(x_p1)
+            x_p1 = self._cnn_2b(x_p1)
+            x_p1 = self.actf(self._dropout(self._linear_2b(x_p1)))
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
+
+            x_inter = self._interleaver(inputs)
+            x_p2 = self._cnn_3a(x_inter)
+            x_p2 = self._linear_3a(x_p2)
+            x_p2 = self._cnn_3b(x_p2)
+            x_p2 = self.actf(self._dropout(self._linear_3b(x_p2)))
+            if self.args["batch_norm"]:
+                x_p2 = self._batch_norm_3(x_p2)
+
+            x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        else:
+            x_inter = self._interleaver(inputs)
+            x_p1 = self._cnn_2a(x_inter)
+            x_p1 = self._linear_2a(x_p1)
+            x_p1 = self._cnn_2b(x_p1)
+            x_p1 = self.actf(self._dropout(self._linear_2b(x_p1)))
+            if self.args["batch_norm"]:
+                x_p1 = self._batch_norm_2(x_p1)
+            x_o = torch.cat([x_sys, x_p1], dim=2)
+
+
+        x = EncoderBase.normalize(x_o)
+        return x
