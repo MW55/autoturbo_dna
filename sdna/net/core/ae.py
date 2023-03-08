@@ -68,7 +68,10 @@ class AutoEncoder(torch.nn.Module):
 
             x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
             #x += noise                # some noise must be additive applied (only for testing)
-            c_dec = self.coder(x)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
+            if self.args["coder"] == 'idt':
+                c_dec = self.coder(x, s_enc)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
+            else:
+                c_dec = self.coder(x)
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(c_dec, hidden, s_enc)
             elif self.args["decoder"] == "transformer":

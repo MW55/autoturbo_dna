@@ -41,7 +41,8 @@ CODERS = {
     "cnn_nolat": CoderCNN_nolat,
     "cnn_rnn": CoderCNN_RNN,
     "cnn_conc": CoderCNN_conc,
-    "cnn_ensemble": EnsembleCNN
+    "cnn_ensemble": EnsembleCNN,
+    "idt": CoderIDT
 }
 
 __all__ = ['AutoEncoder',

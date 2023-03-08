@@ -857,6 +857,7 @@ class CoderIDT(CoderBase):
             #self._linear_3 = torch.nn.Linear(
             #    self.args["coder_units"] * (self.args["block_length"]),
             #    self.args["block_length"])
+        self._idl = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
 
     def set_parallel(self):
         """
@@ -870,7 +871,7 @@ class CoderIDT(CoderBase):
             self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
             self._linear_3 = torch.nn.DataParallel(self._linear_3)
 
-    def forward(self, inputs):
+    def forward(self, inputs, target):
         """
         Calculates output tensors from input tensors based on the process.
         :param inputs: Input tensor.
@@ -899,4 +900,5 @@ class CoderIDT(CoderBase):
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
         x = Quantizer.apply(x)
+        x = self._idl(x, target)
         return x
