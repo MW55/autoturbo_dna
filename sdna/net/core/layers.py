@@ -236,3 +236,58 @@ class ForbiddenSeqActivation(torch.nn.Module):
         return output_tensor
 
 
+class IDTLayer(torch.nn.Module):
+    def __init__(self, input_size, output_size, hidden_size, num_layers):
+        super(IDTLayer, self).__init__()
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+
+        # Embedding layer
+        self.embedding = torch.nn.Embedding(input_size, hidden_size)
+
+        # Positional encoding layer
+        self.positional_encoding = torch.nn.Embedding(output_size, hidden_size)
+
+        # Transformer layers
+        self.transformer_layers = torch.nn.ModuleList([
+            torch.nn.TransformerEncoderLayer(hidden_size, nhead=8) #8 = hardcoded seqlen???
+            for _ in range(num_layers)
+        ])
+
+        # Output layer
+        self.output_layer = torch.nn.Linear(hidden_size, input_size)
+
+        # Copy probabilities layer
+        self.copy_layer = torch.nn.Linear(hidden_size, 2)
+
+    def forward(self, input_seq, target_seq):
+        # Embed input sequence
+        embedded_input = self.embedding(input_seq)
+
+        # Generate target sequence mask
+        target_mask = (target_seq != 0).unsqueeze(-2)
+
+        # Embed target sequence and add positional encoding
+        embedded_target = self.embedding(target_seq) + self.positional_encoding.weight
+
+        # Apply transformer layers
+        transformed = embedded_target
+        for transformer_layer in self.transformer_layers:
+            transformed = transformer_layer(transformed, target_mask)
+
+        # Generate copy probabilities
+        copy_probabilities = self.copy_layer(transformed)
+        copy_probabilities = func.softmax(copy_probabilities, dim=-1)
+
+        # Generate output sequence
+        output = self.output_layer(transformed)
+        output_probabilities = func.softmax(output, dim=-1)
+
+        # Combine copy and output probabilities
+        output_probabilities = copy_probabilities[..., 0].unsqueeze(-1) * output_probabilities
+        copy_probabilities = copy_probabilities[..., 1].unsqueeze(-1) * embedded_input
+        output_probabilities += copy_probabilities
+
+        return output_probabilities
