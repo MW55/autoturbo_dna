@@ -820,6 +820,7 @@ class EnsembleCNN(CoderBase):
         majority = torch.mode(outputs, dim=0).values.permute(1, 2, 0)
         return majority
 
+
 class CoderIDT(CoderBase):
     def __init__(self, arguments):
         """
@@ -831,8 +832,8 @@ class CoderIDT(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        #self._idl_1 = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
-        self._idl_1 = IDTLayer(self.args["block_length"], self.args["block_length"])
+        self._idl_1 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3)
+        #self._idl_1 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_1 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
@@ -840,8 +841,8 @@ class CoderIDT(CoderBase):
                              kernel_size=self.args["coder_kernel"])
         self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
-        #self._idl_2 = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
-        self._idl_2 = IDTLayer(self.args["block_length"], self.args["block_length"])
+        self._idl_2 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3)
+        #self._idl_2 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
@@ -852,8 +853,8 @@ class CoderIDT(CoderBase):
         #    self.args["coder_units"] * (self.args["block_length"]),
         #    self.args["block_length"])
         if self.args["rate"] == "onethird":
-            #self._idl_3 = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
-            self._idl_3 = IDTLayer(self.args["block_length"], self.args["block_length"])
+            self._idl_3 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3)
+            #self._idl_3 = IDTLayer(self.args["block_length"], self.args["block_length"])
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
@@ -884,16 +885,16 @@ class CoderIDT(CoderBase):
         :return: Output tensor of coder.
         """
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
-        #target_x_sys = target[:, :, 0].view((target.size()[0], target.size()[1], 1))
-        x_sys =self._idl_1(x_sys, self.args["block_length"])
+        target_x_sys = target[:, :, 0].view((target.size()[0], target.size()[1], 1))
+        x_sys =self._idl_1(x_sys, target_x_sys)
         x_sys = self._cnn_1(x_sys)
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
         x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
-        #target_x_p1 = target[:, :, 1].view((target.size()[0], target.size()[1], 1))
-        x_p1 =self._idl_2(x_p1, self.args["block_length"])
+        target_x_p1 = target[:, :, 1].view((target.size()[0], target.size()[1], 1))
+        x_p1 =self._idl_2(x_p1, target_x_p1)
         x_p1 = self._cnn_2(x_p1)
         x_p1 = torch.flatten(x_p1, start_dim=1)
         x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
@@ -901,8 +902,8 @@ class CoderIDT(CoderBase):
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
-            #target_x_p2 = target[:, :, 2].view((target.size()[0], target.size()[1], 1))
-            x_p2 = self._idl_2(x_p2, self.args["block_length"])
+            target_x_p2 = target[:, :, 2].view((target.size()[0], target.size()[1], 1))
+            x_p2 = self._idl_2(x_p2, target_x_p2)
             x_p2 = self._cnn_3(x_p2)
             x_p2 = torch.flatten(x_p2, start_dim=1)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
@@ -914,3 +915,42 @@ class CoderIDT(CoderBase):
         x = Quantizer.apply(x)
         #x = self._idl(x, target)
         return x
+
+'''
+class CoderIDT(torch.nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, max_edit_distance):
+        super(CoderIDT, self).__init__()
+        self.edit_cost = torch.nn.Linear(hidden_size, max_edit_distance * 2 + 1)
+        self.output = torch.nn.Linear(input_size + hidden_size, output_size)
+        self.max_edit_distance = max_edit_distance
+
+    def calc_probs(self, input, encoder_output, prev_output, prev_cost):
+        # Convert input to one-hot vector
+        input = torch.eye(2)[input.long()].unsqueeze(1)  # [batch_size, 1, input_size]
+
+        encoder_proj = self.edit_cost(encoder_output)  # [batch_size, seq_len, max_edit_distance*2+1]
+        output_proj = self.edit_cost(prev_output)  # [batch_size, 1, max_edit_distance*2+1]
+        cost = prev_cost.unsqueeze(1) + encoder_proj + output_proj  # [batch_size, seq_len, max_edit_distance*2+1]
+
+        prob = nn.functional.softmax(-cost, dim=-1)  # [batch_size, seq_len, max_edit_distance*2+1]
+
+        context = torch.bmm(prob.transpose(1, 2), encoder_output)  # [batch_size, 1, hidden_size]
+
+        output_prob = nn.functional.softmax(self.output(torch.cat([input, context], dim=-1)), dim=-1)  # [batch_size, 1, output_size]
+
+        edit_cost, _ = torch.min(cost, dim=-1)  # [batch_size, seq_len]
+        min_cost, _ = torch.min(edit_cost, dim=-1, keepdim=True)  # [batch_size, 1]
+
+        edit_dist = torch.arange(-self.max_edit_distance, self.max_edit_distance+1).unsqueeze(0).to(input.device)  # [1, max_edit_distance*2+1]
+        edit_dist = edit_dist.repeat(input.size(0), 1)  # [batch_size, max_edit_distance*2+1]
+        candidate_output = torch.cat([prev_output.repeat(1, 1, output_size), torch.zeros(input.size(0), self.max_edit_distance, output_size).to(input.device), output_prob], dim=1)  # [batch_size, seq_len+max_edit_distance, output_size]
+
+        cost_exp = torch.cat([prev_cost, torch.zeros(input.size(0), self.max_edit_distance).to(input.device) + float('inf')], dim=1)  # [batch_size, seq_len+max_edit_distance]
+        edit_dist_exp = torch.cat([torch.zeros(input.size(0), prev_output.size(1)).to(input.device), edit_dist], dim=1)  # [batch_size, seq_len+max_edit_distance]
+        edit_dist_cost = (edit_dist_exp - edit_dist) ** 2 + 1  # [batch_size, seq_len+max_edit_distance, max_edit_distance*2+1]
+
+        new_cost = torch.min(torch.cat([cost_exp.unsqueeze(-1), edit_cost.unsqueeze(-1) + edit_dist_cost], dim=-1), dim=-1)[0]  # [batch_size, seq_len+max_edit_distance]
+        new_cost[:, 0] = min_cost.squeeze()  # Set cost for first position to minimum cost over entire sequence
+
+        return output_prob,  new_cost, candidate_output
+'''

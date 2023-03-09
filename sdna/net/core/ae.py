@@ -39,6 +39,9 @@ class AutoEncoder(torch.nn.Module):
         ao_enc = np.random.mtrand.RandomState(seed).permutation(np.arange(inputs.size()[1]))
         self.enc.set_interleaver_order(ao_enc)
         self.dec.set_interleaver_order(ao_enc)
+        if self.args["decoder"] == 'ensemble_dec':
+            for model in self.dec.models:
+                model.set_interleaver_order(ao_enc)
 
         if self.args["encoder"] == "rnnatt":
             x, hidden = self.enc(inputs, hidden)
@@ -59,17 +62,13 @@ class AutoEncoder(torch.nn.Module):
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
-            #x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
-            #x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
-            x = x.permute(0, 2, 1)
-            #x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
-            x = func.pad(x, (0, padding), mode='circular')
-            x = x.permute(0, 2, 1)
+            x = pad_data(x, padding)
 
             x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
             #x += noise                # some noise must be additive applied (only for testing)
             if self.args["coder"] == 'idt':
-                c_dec = self.coder(x, s_enc)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
+                padded_enc = pad_data(s_enc, padding)
+                c_dec = self.coder(x, padded_enc)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
             else:
                 c_dec = self.coder(x)
             if self.args["decoder"] == "rnnatt":
@@ -82,3 +81,12 @@ class AutoEncoder(torch.nn.Module):
             else:
                 s_dec = self.dec(c_dec)  # stream decoder => in (-1, +1) | out (0, +1)
         return s_dec, s_enc, c_dec, x
+
+def pad_data(x, padding):
+    # x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
+    # x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
+    x = x.permute(0, 2, 1)
+    # x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
+    x = func.pad(x, (0, padding), mode='circular')
+    x = x.permute(0, 2, 1)
+    return x

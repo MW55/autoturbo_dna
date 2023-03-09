@@ -293,14 +293,14 @@ class IDTLayer(torch.nn.Module):
         return output_probabilities
 '''
 
-'''
 class IDTLayer(torch.nn.Module):
-    def __init__(self, input_size, output_size, hidden_size, num_layers):
+    def __init__(self, input_size, output_size, hidden_size, num_layers, nhead):
         super(IDTLayer, self).__init__()
         self.input_size = input_size
         self.output_size = output_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.nhead = nhead
 
         # Embedding layer
         self.embedding = torch.nn.Embedding(input_size, hidden_size)
@@ -310,7 +310,7 @@ class IDTLayer(torch.nn.Module):
 
         # Transformer layers
         self.transformer_layers = torch.nn.ModuleList([
-            torch.nn.TransformerEncoderLayer(hidden_size, nhead=8)
+            torch.nn.TransformerEncoderLayer(hidden_size, nhead=self.nhead)
             for _ in range(num_layers)
         ])
 
@@ -322,13 +322,35 @@ class IDTLayer(torch.nn.Module):
 
     def forward(self, input_seq, target_seq):
         # Pad input sequence tensor
+        #input_seq = input_seq.reshape(input_seq.size(0), -1)
+        #target_seq = target_seq.reshape(target_seq.size(0), -1)
+
+        batch_size, seq_len, hidden_size = input_seq.shape
+
+        # create attention mask tensor
+        #attn_mask = torch.triu(torch.ones(seq_len, seq_len) * -1e9, diagonal=1)
+        #attn_mask = attn_mask.unsqueeze(0).repeat(batch_size, 1, 1)
+
+        attn_mask = torch.triu(torch.ones(seq_len, seq_len) * -1e9, diagonal=1).unsqueeze(0)
+        attn_mask = attn_mask.repeat(batch_size, 1, 1)
+
+
         input_seq_padded = torch.nn.utils.rnn.pad_sequence(input_seq, batch_first=True)
 
         # Embed input sequence
+        input_seq_padded = torch.where(input_seq_padded == -1, torch.tensor([0]), input_seq_padded).long()
+        target_seq = torch.where(target_seq == -1, torch.tensor([0]), target_seq).long()
+
+        batch_size, seq_len, individual_bits = input_seq.shape
+
+        # Reshape input_seq and target_seq
+        input_seq = input_seq.view(batch_size, seq_len * individual_bits)
+        target_seq = target_seq.view(batch_size, seq_len * individual_bits)
+
         embedded_input = self.embedding(input_seq_padded)
 
         # Generate target sequence mask
-        target_mask = (target_seq != 0).unsqueeze(-2)
+        #target_mask = (target_seq != 0).unsqueeze(-2)
 
         # Embed target sequence and add positional encoding
         embedded_target = self.embedding(target_seq) + self.positional_encoding.weight
@@ -336,7 +358,7 @@ class IDTLayer(torch.nn.Module):
         # Apply transformer layers
         transformed = embedded_target
         for transformer_layer in self.transformer_layers:
-            transformed = transformer_layer(transformed, target_mask)
+            transformed = transformer_layer(transformed, attn_mask)
 
         # Generate copy probabilities
         copy_probabilities = self.copy_layer(transformed)
@@ -351,12 +373,17 @@ class IDTLayer(torch.nn.Module):
         copy_probabilities = copy_probabilities[..., 1].unsqueeze(-1) * embedded_input
         output_probabilities += copy_probabilities
 
+        # Reshape output_probabilities
+        output_probabilities = output_probabilities.view(batch_size, seq_len, self.input_size)
+
+
         # Remove padding from output sequence tensor
         output_probabilities = torch.nn.utils.rnn.pack_padded_sequence(output_probabilities, lengths=input_seq.ne(0).sum(dim=-1), batch_first=True, enforce_sorted=False).data
 
+        output_probabilities = torch.where(output_probabilities == 0, torch.tensor([-1]), output_probabilities).float()
         return output_probabilities
-'''
 
+'''
 class IDTLayer(torch.nn.Module):
     def __init__(self, input_size, hidden_size):
         super().__init__()
@@ -429,3 +456,4 @@ class IDTLayer(torch.nn.Module):
                     idx += 2
         denoised_seq = torch.where(denoised_seq == 0, torch.tensor([-1]), denoised_seq).float()
         return denoised_seq
+'''

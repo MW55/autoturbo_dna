@@ -1140,3 +1140,50 @@ class DecoderTransformer(DecoderBase):
 
         x = torch.sigmoid(prior)
         return x
+
+
+class EnsembleDecoder(DecoderBase):
+    def __init__(self, arguments):
+        """
+        Ensemble of CNN based networks. Used to reconstruct the code stream from the encoder after
+        applying the noisy channel.
+        :param arguments: Arguments as dictionary.
+        """
+        super(EnsembleDecoder, self).__init__(arguments)
+
+        self.n_models = self.args['n_models']
+        self.models = torch.nn.ModuleList([DecoderCNN_nolat(self.args) for i in range(self.n_models)])
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of coder.
+        """
+        '''
+        outputs = []
+        for i in range(self.n_models):
+            outputs.append(self.models[i].forward(inputs).detach().numpy())
+        #x = torch.mean(torch.stack(outputs), dim=0)
+        x = np.apply_along_axis(lambda y: np.argmax(np.bincount(y)), axis=0, arr=outputs)
+        #x = self.ensemble_predict()
+        '''
+        outputs = []
+        for i in range(self.n_models):
+            outputs.append(self.models[i].forward(inputs))
+
+        outputs = torch.stack(outputs)  # shape: (n_models, batch_size, sequence_length, num_classes)
+        x = torch.mode(outputs, dim=0).values  # shape: (batch_size, sequence_length, num_classes)
+        return x
+
+    def ensemble_predict(self, inp, models):
+        outputs = []
+        for model in models:
+            model.eval()
+            with torch.no_grad():
+                output = model(inp)
+                output = torch.round(output).permute(2, 0, 1)
+                outputs.append(output)
+        outputs = torch.stack(outputs, dim=0)
+        majority = torch.mode(outputs, dim=0).values.permute(1, 2, 0)
+        return majority

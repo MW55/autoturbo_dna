@@ -30,7 +30,8 @@ DECODERS = {
     "rnnatt": DecoderRNNatt,
     "transformer": DecoderTransformer,
     "cnn_nolat": DecoderCNN_nolat,
-    "entransformer": DecoderEnTransformer
+    "entransformer": DecoderEnTransformer,
+    "ensemble_dec": EnsembleDecoder
 }
 
 CODERS = {
