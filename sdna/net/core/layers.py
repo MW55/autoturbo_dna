@@ -235,7 +235,7 @@ class ForbiddenSeqActivation(torch.nn.Module):
         output_tensor = torch.relu(output_tensor)
         return output_tensor
 
-
+'''
 class IDTLayer(torch.nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_layers):
         super(IDTLayer, self).__init__()
@@ -291,3 +291,141 @@ class IDTLayer(torch.nn.Module):
         output_probabilities += copy_probabilities
 
         return output_probabilities
+'''
+
+'''
+class IDTLayer(torch.nn.Module):
+    def __init__(self, input_size, output_size, hidden_size, num_layers):
+        super(IDTLayer, self).__init__()
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+
+        # Embedding layer
+        self.embedding = torch.nn.Embedding(input_size, hidden_size)
+
+        # Positional encoding layer
+        self.positional_encoding = torch.nn.Embedding(output_size, hidden_size)
+
+        # Transformer layers
+        self.transformer_layers = torch.nn.ModuleList([
+            torch.nn.TransformerEncoderLayer(hidden_size, nhead=8)
+            for _ in range(num_layers)
+        ])
+
+        # Output layer
+        self.output_layer = torch.nn.Linear(hidden_size, input_size)
+
+        # Copy probabilities layer
+        self.copy_layer = torch.nn.Linear(hidden_size, 2)
+
+    def forward(self, input_seq, target_seq):
+        # Pad input sequence tensor
+        input_seq_padded = torch.nn.utils.rnn.pad_sequence(input_seq, batch_first=True)
+
+        # Embed input sequence
+        embedded_input = self.embedding(input_seq_padded)
+
+        # Generate target sequence mask
+        target_mask = (target_seq != 0).unsqueeze(-2)
+
+        # Embed target sequence and add positional encoding
+        embedded_target = self.embedding(target_seq) + self.positional_encoding.weight
+
+        # Apply transformer layers
+        transformed = embedded_target
+        for transformer_layer in self.transformer_layers:
+            transformed = transformer_layer(transformed, target_mask)
+
+        # Generate copy probabilities
+        copy_probabilities = self.copy_layer(transformed)
+        copy_probabilities = func.softmax(copy_probabilities, dim=-1)
+
+        # Generate output sequence
+        output = self.output_layer(transformed)
+        output_probabilities = func.softmax(output, dim=-1)
+
+        # Combine copy and output probabilities
+        output_probabilities = copy_probabilities[..., 0].unsqueeze(-1) * output_probabilities
+        copy_probabilities = copy_probabilities[..., 1].unsqueeze(-1) * embedded_input
+        output_probabilities += copy_probabilities
+
+        # Remove padding from output sequence tensor
+        output_probabilities = torch.nn.utils.rnn.pack_padded_sequence(output_probabilities, lengths=input_seq.ne(0).sum(dim=-1), batch_first=True, enforce_sorted=False).data
+
+        return output_probabilities
+'''
+
+class IDTLayer(torch.nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super().__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        # Input embedding layer
+        self.embedding = torch.nn.Embedding(2, hidden_size, padding_idx=0)
+
+        # Encoder and decoder layers
+        self.encoder = torch.nn.LSTM(hidden_size, hidden_size, batch_first=True)
+        self.decoder = torch.nn.LSTMCell(hidden_size, hidden_size)
+
+        # Output linear layer
+        self.linear = torch.nn.Linear(hidden_size, 2)
+
+    def forward(self, input_seq, seq_length):
+        batch_size, seqlen, individual_bits = input_seq.size()
+        input_seq = input_seq.view(batch_size, -1)
+        batch_size, max_seq_length = input_seq.size()
+
+        # Embed input sequence
+        input_seq = torch.where(input_seq == -1, torch.tensor([0]), input_seq).long()
+        input_embed = self.embedding(input_seq)
+
+        # Initialize hidden state of encoder
+        h_0 = torch.zeros(1, batch_size, self.hidden_size).to(input_seq.device)
+        c_0 = torch.zeros(1, batch_size, self.hidden_size).to(input_seq.device)
+
+        # Encode input sequence with LSTM
+        encoder_output, (h_n, c_n) = self.encoder(input_embed, (h_0, c_0))
+
+        # Initialize hidden state of decoder
+        decoder_h = h_n[-1]
+        decoder_c = torch.zeros_like(decoder_h)
+
+        # Initialize output sequence
+        output_seq = torch.zeros(batch_size, max_seq_length, 2).to(input_seq.device)
+
+        # Loop over each element in the sequence
+        for t in range(max_seq_length):
+            # Predict next token
+            decoder_h, decoder_c = self.decoder(encoder_output[:, t, :], (decoder_h, decoder_c))
+            output_logits = self.linear(decoder_h)
+            output_probs = torch.softmax(output_logits, dim=-1)
+
+            # Insertion step
+            if t < seq_length:
+                output_seq[:, t, :] = output_probs
+            # Deletion step
+            else:
+                output_seq[:, t-1, :] = output_probs
+
+        #batch_size, seq_len_mul_ind_bits, _ = output_seq.size()
+        #output_seq = output_seq.view(batch_size, seqlen, individual_bits, 2).permute(0, 1, 3, 2).reshape(batch_size, seqlen,
+        #                                                                                    individual_bits)
+        batch_size, seq_len_mul_2, _ = output_seq.size()
+        denoised_seq = torch.zeros((batch_size, seqlen, individual_bits), dtype=torch.int)
+        for b in range(batch_size):
+            idx = 0
+            for i in range(seqlen):
+                for j in range(individual_bits):
+                    bit_probs = output_seq[b, idx:idx + 2, :]
+                    if bit_probs.numel() > 0:
+                        bit = bit_probs.argmax()
+                    else:
+                        bit = 0
+                    #bit = output_seq[b, idx:idx + 2, :].argmax()
+                    denoised_seq[b, i, j] = bit
+                    idx += 2
+        denoised_seq = torch.where(denoised_seq == 0, torch.tensor([-1]), denoised_seq).float()
+        return denoised_seq

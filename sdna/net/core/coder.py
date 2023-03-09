@@ -831,6 +831,8 @@ class CoderIDT(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
+        #self._idl_1 = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
+        self._idl_1 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_1 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
@@ -838,6 +840,8 @@ class CoderIDT(CoderBase):
                              kernel_size=self.args["coder_kernel"])
         self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
+        #self._idl_2 = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
+        self._idl_2 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
@@ -848,6 +852,8 @@ class CoderIDT(CoderBase):
         #    self.args["coder_units"] * (self.args["block_length"]),
         #    self.args["block_length"])
         if self.args["rate"] == "onethird":
+            #self._idl_3 = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
+            self._idl_3 = IDTLayer(self.args["block_length"], self.args["block_length"])
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
@@ -857,7 +863,7 @@ class CoderIDT(CoderBase):
             #self._linear_3 = torch.nn.Linear(
             #    self.args["coder_units"] * (self.args["block_length"]),
             #    self.args["block_length"])
-        self._idl = IDTLayer(self.args["block_length"], self.args["block_length"], self.args["block_length"], 3)
+
 
     def set_parallel(self):
         """
@@ -878,12 +884,16 @@ class CoderIDT(CoderBase):
         :return: Output tensor of coder.
         """
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+        #target_x_sys = target[:, :, 0].view((target.size()[0], target.size()[1], 1))
+        x_sys =self._idl_1(x_sys, self.args["block_length"])
         x_sys = self._cnn_1(x_sys)
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
         x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+        #target_x_p1 = target[:, :, 1].view((target.size()[0], target.size()[1], 1))
+        x_p1 =self._idl_2(x_p1, self.args["block_length"])
         x_p1 = self._cnn_2(x_p1)
         x_p1 = torch.flatten(x_p1, start_dim=1)
         x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
@@ -891,6 +901,8 @@ class CoderIDT(CoderBase):
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+            #target_x_p2 = target[:, :, 2].view((target.size()[0], target.size()[1], 1))
+            x_p2 = self._idl_2(x_p2, self.args["block_length"])
             x_p2 = self._cnn_3(x_p2)
             x_p2 = torch.flatten(x_p2, start_dim=1)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
@@ -900,5 +912,5 @@ class CoderIDT(CoderBase):
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
         x = Quantizer.apply(x)
-        x = self._idl(x, target)
+        #x = self._idl(x, target)
         return x
