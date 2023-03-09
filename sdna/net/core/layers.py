@@ -331,7 +331,7 @@ class IDTLayer(torch.nn.Module):
         #attn_mask = torch.triu(torch.ones(seq_len, seq_len) * -1e9, diagonal=1)
         #attn_mask = attn_mask.unsqueeze(0).repeat(batch_size, 1, 1)
 
-        attn_mask = torch.triu(torch.ones(seq_len, seq_len) * -1e9, diagonal=1).unsqueeze(0)
+        attn_mask = torch.triu(torch.ones(self.nhead*seq_len, self.nhead*seq_len) * -1e9, diagonal=1).unsqueeze(0)
         attn_mask = attn_mask.repeat(batch_size, 1, 1)
 
 

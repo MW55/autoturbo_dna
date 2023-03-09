@@ -832,7 +832,7 @@ class CoderIDT(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._idl_1 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3)
+        self._idl_1 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3, 16)
         #self._idl_1 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_1 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
@@ -841,7 +841,7 @@ class CoderIDT(CoderBase):
                              kernel_size=self.args["coder_kernel"])
         self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
-        self._idl_2 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3)
+        self._idl_2 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3, 16)
         #self._idl_2 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
@@ -853,7 +853,7 @@ class CoderIDT(CoderBase):
         #    self.args["coder_units"] * (self.args["block_length"]),
         #    self.args["block_length"])
         if self.args["rate"] == "onethird":
-            self._idl_3 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3)
+            self._idl_3 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 16, 3, 16)
             #self._idl_3 = IDTLayer(self.args["block_length"], self.args["block_length"])
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
