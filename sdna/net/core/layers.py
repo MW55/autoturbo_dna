@@ -315,7 +315,7 @@ class IDTLayer(torch.nn.Module):
         ])
 
         # Output layer
-        self.output_layer = torch.nn.Linear(hidden_size, input_size)
+        self.output_layer = torch.nn.Linear(hidden_size, 2)#input_size
 
         # Copy probabilities layer
         self.copy_layer = torch.nn.Linear(hidden_size, 2)
@@ -331,8 +331,11 @@ class IDTLayer(torch.nn.Module):
         #attn_mask = torch.triu(torch.ones(seq_len, seq_len) * -1e9, diagonal=1)
         #attn_mask = attn_mask.unsqueeze(0).repeat(batch_size, 1, 1)
 
-        attn_mask = torch.triu(torch.ones(self.nhead*seq_len, self.nhead*seq_len) * -1e9, diagonal=1).unsqueeze(0)
-        attn_mask = attn_mask.repeat(batch_size, 1, 1)
+        #attn_mask = torch.triu(torch.ones(self.nhead*seq_len, self.nhead*seq_len) * -1e9, diagonal=1).unsqueeze(0)
+        #attn_mask = attn_mask.repeat(batch_size, 1, 1)
+        attn_mask = torch.triu(torch.ones(batch_size, batch_size) * -1e9, diagonal=1).unsqueeze(0)
+        attn_mask = attn_mask.repeat(seq_len, 1, 1) #maybe hidden size instead of seq_len
+
 
 
         input_seq_padded = torch.nn.utils.rnn.pad_sequence(input_seq, batch_first=True)
@@ -348,6 +351,7 @@ class IDTLayer(torch.nn.Module):
         target_seq = target_seq.view(batch_size, seq_len * individual_bits)
 
         embedded_input = self.embedding(input_seq_padded)
+        embedded_input = embedded_input.squeeze(dim=2)
 
         # Generate target sequence mask
         #target_mask = (target_seq != 0).unsqueeze(-2)
@@ -370,18 +374,24 @@ class IDTLayer(torch.nn.Module):
 
         # Combine copy and output probabilities
         output_probabilities = copy_probabilities[..., 0].unsqueeze(-1) * output_probabilities
-        copy_probabilities = copy_probabilities[..., 1].unsqueeze(-1) * embedded_input
-        output_probabilities += copy_probabilities
+        copy_probabilities = copy_probabilities[..., 1].unsqueeze(-1) * torch.squeeze(embedded_input, dim=-2) #embedded_input
+        output_probabilities += copy_probabilities #.sum(dim=-2)
 
         # Reshape output_probabilities
-        output_probabilities = output_probabilities.view(batch_size, seq_len, self.input_size)
+        #output_probabilities = output_probabilities.view(batch_size, seq_len, self.input_size)
 
 
         # Remove padding from output sequence tensor
-        output_probabilities = torch.nn.utils.rnn.pack_padded_sequence(output_probabilities, lengths=input_seq.ne(0).sum(dim=-1), batch_first=True, enforce_sorted=False).data
+        #output_probabilities = torch.nn.utils.rnn.pack_padded_sequence(output_probabilities, lengths=input_seq.ne(0).sum(dim=-1), batch_first=True, enforce_sorted=False).data
 
-        output_probabilities = torch.where(output_probabilities == 0, torch.tensor([-1]), output_probabilities).float()
-        return output_probabilities
+        #output_probabilities = torch.where(output_probabilities == 0, torch.tensor([-1]), output_probabilities).float()
+        binary_output = torch.zeros_like(output_probabilities[..., 0])  # Initialize tensor for binary output
+        binary_output[output_probabilities[..., 1] > output_probabilities[
+            ..., 0]] = 1  # Set positions with higher probability of 1 to 1
+        binary_output[binary_output == 0] = -1  # Set remaining positions to -1
+        binary_output = binary_output.unsqueeze(-1)  # Add singleton dimension for last dimension
+
+        return binary_output
 
 '''
 class IDTLayer(torch.nn.Module):
