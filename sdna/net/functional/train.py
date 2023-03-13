@@ -27,6 +27,9 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
     #kl = MarkovModelKL(3)
     #kl.fit("/home/wintermute/projects/autoturbo_dna/eval/cw_40_60_hp3.fasta")
     #done
+    #testing
+    huber_loss = torch.nn.SmoothL1Loss(beta=1.0)
+    #tesing_done
 
     for i in range(0, int(args["blocks"] / args["batch_size"])):
         optimizer.zero_grad()
@@ -61,7 +64,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
             s_dec = torch.clamp(s_dec, 0.0, 1.0)
             if args['encoder'] == 'rnnatt':
                 hidden = s_dec[1]
-            gradient = func.binary_cross_entropy(s_dec, x_train)
+            gradient = huber_loss(s_dec, x_train)
+            #gradient = func.binary_cross_entropy(s_dec, x_train)
             #if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
             #    gradient += model.channel.evaluate(s_enc) #kl, *1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
             #    if args["encoder"] == "vae":
@@ -75,7 +79,9 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
              #   if args["encoder"] == "vae":
              #       gradient += beta * ((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
         else:
-            gradient = func.mse_loss(s_enc, c_dec)
+            gradient = huber_loss(s_enc, c_dec)
+
+            #gradient = func.mse_loss(s_enc, c_dec)
         gradient.backward()
 
         loss += float(gradient.item())
