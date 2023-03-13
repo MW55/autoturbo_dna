@@ -1040,6 +1040,7 @@ class ResNetCoder(CoderBase):
 
         return x
 
+'''
 class ResNetBlock2d(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
         super(ResNetBlock2d, self).__init__()
@@ -1070,7 +1071,7 @@ class ResNetBlock2d(torch.nn.Module):
         return x
 
 class ResNetCoder2d(CoderBase):
-    def __init__(self, arguments, block=ResNetBlock, num_blocks=(2, 2, 2, 2), in_channels=1, out_channels=16):
+    def __init__(self, arguments, block=ResNetBlock2d, num_blocks=(2, 2, 2, 2), in_channels=3, out_channels=10):
         super(ResNetCoder2d, self).__init__(arguments)
         self.in_channels = in_channels
 
@@ -1092,8 +1093,9 @@ class ResNetCoder2d(CoderBase):
         return torch.nn.Sequential(*layers)
 
     def forward(self, x):
-        x = x.transpose(1, 2)  # (batch_size, 3, sequence_len) -> (batch_size, sequence_len, 3)
-        x = x.unsqueeze(2)  # (batch_size, sequence_len, 3) -> (batch_size, sequence_len, 1, 3)
+        #x = x.transpose(1, 2)  # (batch_size, 3, sequence_len) -> (batch_size, sequence_len, 3)
+        #x = x.unsqueeze(2)  # (batch_size, sequence_len, 3) -> (batch_size, sequence_len, 1, 3)
+        x = x.transpose(1, 2).unsqueeze(-1) #.unsqueeze(-1)
         x = self.conv1(x)
         x = self.bn1(x)
         x = torch.relu(x) #inplace=True
@@ -1104,4 +1106,97 @@ class ResNetCoder2d(CoderBase):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
+        return x
+'''
+
+class ResNetBlock2d(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(ResNetBlock2d, self).__init__()
+
+        self.conv1 = torch.nn.Conv2d(in_channels, out_channels, kernel_size=(3,3), padding=(1,1))
+        self.bn1 = torch.nn.BatchNorm2d(out_channels)
+        self.conv2 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=(3,3), padding=(1,1))
+        self.bn2 = torch.nn.BatchNorm2d(out_channels)
+
+        #self.conv1 = torch.nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
+        #self.bn1 = torch.nn.BatchNorm2d(out_channels)
+        #self.conv2 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        #self.bn2 = torch.nn.BatchNorm2d(out_channels)
+
+        if in_channels == out_channels:
+            self.shortcut = torch.nn.Identity()
+        else:
+            self.shortcut = torch.nn.Conv2d(in_channels, out_channels, kernel_size=(1,1))
+
+#            self.shortcut = torch.nn.Conv2d(in_channels, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        shortcut = self.shortcut(x)
+
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = func.relu(x, inplace=True)
+
+        x = self.conv2(x)
+        x = self.bn2(x)
+
+        x += shortcut
+        x = func.relu(x, inplace=True)
+
+        return x
+
+
+class ResNetCoder2d(CoderBase):
+    def __init__(self, arguments, in_channels=3, out_channels=64, n_blocks=15): #ToDo use the config
+        super(ResNetCoder2d, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(0)
+
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
+        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
+        self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])  # +16
+
+        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(3,3))
+        self.bn1 = torch.nn.BatchNorm2d(out_channels)
+
+        layers = []
+        for i in range(n_blocks):
+            layers.append(ResNetBlock2d(out_channels, out_channels))
+        self.layers = torch.nn.Sequential(*layers)
+
+        self.conv2 = torch.nn.Conv2d(out_channels, in_channels, kernel_size=(7,7), padding=(4,3))
+
+    def forward(self, inputs):
+
+        x = inputs.view(256, 1, 10, 3)
+
+
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = func.relu(x, inplace=True)
+
+        x = self.layers(x)
+
+        x = self.conv2(x)
+        x = x.view(256, 10, 3)
+
+        x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
+        x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
+        x_p2 = inputs[:, :, 2].view((x.size()[0], x.size()[1], 1))
+
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p2 = torch.flatten(x_p2, start_dim=1)
+        x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+        x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        x = Quantizer.apply(x)
+
         return x
