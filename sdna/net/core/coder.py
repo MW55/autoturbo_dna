@@ -966,12 +966,12 @@ class CoderIDT(torch.nn.Module):
 '''
 
 class ResNetBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1):
         super(ResNetBlock, self).__init__()
 
-        self.conv1 = torch.nn.Conv1d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.conv1 = torch.nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, padding=padding)
         self.bn1 = torch.nn.BatchNorm1d(out_channels)
-        self.conv2 = torch.nn.Conv1d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.conv2 = torch.nn.Conv1d(out_channels, out_channels, kernel_size=kernel_size, padding=padding)
         self.bn2 = torch.nn.BatchNorm1d(out_channels)
 
         if in_channels == out_channels:
@@ -1207,6 +1207,95 @@ class ResNetCoder2d(CoderBase):
         x_p2_no_pad, x_p2_padding = torch.split(x_p2, self.args["block_length"], dim=1)
         x_p2_no_pad = self.interleaver(x_p2_no_pad)
         x_p2 = torch.cat((x_p2_no_pad, x_p2_padding), dim=1)
+
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p2 = torch.flatten(x_p2, start_dim=1)
+        x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+        x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        x = Quantizer.apply(x)
+
+        return x
+
+class ResNetCoder2d_1d(CoderBase):
+    def __init__(self, arguments, in_channels=3, out_channels=64, n_blocks=15):
+        super(ResNetCoder2d_1d, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(0)
+
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])
+
+        self.conv1_2d = torch.nn.Conv2d(in_channels=1, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.bn1_2d = torch.nn.BatchNorm2d(out_channels)
+
+        layers2d = []
+        for i in range(n_blocks):
+            layers2d.append(ResNetBlock2d(out_channels, out_channels))
+        self.layers_2d = torch.nn.Sequential(*layers2d)
+
+        self.conv2_2d = torch.nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)
+
+        self.conv1_1d = torch.nn.Conv1d(in_channels=1, out_channels=64, kernel_size=2, padding=1, stride=1)
+        self.bn1_1d = torch.nn.BatchNorm1d(out_channels)
+
+        layers_1d = []
+        for i in range(n_blocks):
+            layers_1d.append(ResNetBlock(out_channels, out_channels))
+        self.layers_1d = torch.nn.Sequential(*layers_1d)
+
+        self.conv2_1d = torch.nn.Conv1d(out_channels, 1, kernel_size=6, padding=2)
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+        :param array: That array that is needed to set interleaver order.
+        """
+        self.interleaver.set_order(array)
+        self.deinterleaver.set_order(array)
+
+    def forward(self, inputs):
+
+        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+        x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+
+        x_inp = torch.cat([x_sys, x_p1], dim=2)
+
+        x = x_inp.view(x_inp.size()[0], 1, x_inp.size()[1], x_inp.size()[2])
+        x = self.conv1_2d(x)
+        x = self.bn1_2d(x)
+        x = func.relu(x, inplace=True)
+
+        x = self.layers_2d(x)
+
+        x = self.conv2_2d(x)
+        x = x.squeeze(1)
+
+        #x_p2 = x_p2.view((x_p2.size()[0], 1, x_p2.size()[1]))
+        x_p2 = x_p2.permute(0, 2, 1)
+        x_p2 = self.conv1_1d(x_p2)
+        x_p2 = self.bn1_1d(x_p2)
+        x_p2 = func.relu(x_p2, inplace=True)
+
+        x_p2 = self.layers_1d(x_p2)
+
+        x_p2 = self.conv2_1d(x_p2)
+
+
+        x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
+        x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
+        x_p2 = x_p2.permute(0, 2, 1)
+        #x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
+
 
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
