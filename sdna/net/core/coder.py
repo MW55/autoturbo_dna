@@ -1143,7 +1143,8 @@ class ResNetCoder2d(CoderBase):
         self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])
 
-        self.conv1 = torch.nn.Conv2d(in_channels=3, out_channels=64, kernel_size=(3, 1))
+        #self.conv1 = torch.nn.Conv2d(in_channels=3, out_channels=64, kernel_size=(3, 1))
+        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=64, kernel_size=3, stride=1, padding=1)
         self.bn1 = torch.nn.BatchNorm2d(out_channels)
 
         layers = []
@@ -1151,12 +1152,13 @@ class ResNetCoder2d(CoderBase):
             layers.append(ResNetBlock2d(out_channels, out_channels))
         self.layers = torch.nn.Sequential(*layers)
 
-        self.conv2 = torch.nn.Conv2d(out_channels, in_channels, kernel_size=(7,7), padding=(4,3))
+        #self.conv2 = torch.nn.Conv2d(out_channels, in_channels, kernel_size=(7, 7), padding=(4, 3))
+        self.conv2 = torch.nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)
 
     def forward(self, inputs):
 
-        x = inputs.permute(0, 2, 1).unsqueeze(3) #.unsqueeze(1)  # reshape to (batch_size, channels, seq_len, 1)
-
+        #x = inputs.permute(0, 2, 1).unsqueeze(3) #.unsqueeze(1)  # reshape to (batch_size, channels, seq_len, 1)
+        x = inputs.view(inputs.size()[0], 1, inputs.size()[1], inputs.size()[2])
         x = self.conv1(x)
         x = self.bn1(x)
         x = func.relu(x, inplace=True)
@@ -1164,7 +1166,8 @@ class ResNetCoder2d(CoderBase):
         x = self.layers(x)
 
         x = self.conv2(x)
-        x = x.permute(0, 2, 1, 3).squeeze(-1)  # reshape back to (batch_size, seq_len, channels)
+        x = x.squeeze(1)
+        #x = x.permute(0, 2, 1, 3).squeeze(-1)  # reshape back to (batch_size, seq_len, channels)
 
         x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
         x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
