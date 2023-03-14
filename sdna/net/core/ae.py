@@ -39,6 +39,8 @@ class AutoEncoder(torch.nn.Module):
         ao_enc = np.random.mtrand.RandomState(seed).permutation(np.arange(inputs.size()[1]))
         self.enc.set_interleaver_order(ao_enc)
         self.dec.set_interleaver_order(ao_enc)
+        if self.args["coder"] == "resnet2d":
+            self.coder.set_interleaver_order(ao_enc)
         if self.args["decoder"] == 'ensemble_dec':
             for model in self.dec.models:
                 model.set_interleaver_order(ao_enc)

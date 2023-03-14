@@ -2,6 +2,7 @@
 import torch
 
 from sdna.net.core.layers import *
+from sdna.net.core.interleaver import *
 import numpy as np
 
 class CoderBase(torch.nn.Module):
@@ -17,6 +18,14 @@ class CoderBase(torch.nn.Module):
     def set_parallel(self):
         """
         Inheritance function to set the model parallel.
+        """
+        pass
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver/de-interleaver order.
+
+        :param array: That array that is needed to set/restore interleaver order.
         """
         pass
 
@@ -1139,6 +1148,9 @@ class ResNetCoder2d(CoderBase):
 
         self._dropout = torch.nn.Dropout(0)
 
+        self.interleaver = Interleaver()
+        self.deinterleaver = DeInterleaver()
+
         self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])
@@ -1155,10 +1167,29 @@ class ResNetCoder2d(CoderBase):
         #self.conv2 = torch.nn.Conv2d(out_channels, in_channels, kernel_size=(7, 7), padding=(4, 3))
         self.conv2 = torch.nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)
 
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+        :param array: That array that is needed to set interleaver order.
+        """
+        self.interleaver.set_order(array)
+        self.deinterleaver.set_order(array)
+
     def forward(self, inputs):
 
+        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
+        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+        x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
+
+        x_p2_no_pad, x_p2_padding = torch.split(x_p2, self.args["block_length"], dim=1)
+        x_p2_no_pad = self.deinterleaver(x_p2_no_pad)
+        x_p2_deinter = torch.cat((x_p2_no_pad, x_p2_padding), dim=1)
+
+        x_inp = torch.cat([x_sys, x_p1, x_p2_deinter], dim=2)
+
+
         #x = inputs.permute(0, 2, 1).unsqueeze(3) #.unsqueeze(1)  # reshape to (batch_size, channels, seq_len, 1)
-        x = inputs.view(inputs.size()[0], 1, inputs.size()[1], inputs.size()[2])
+        x = x_inp.view(x_inp.size()[0], 1, x_inp.size()[1], x_inp.size()[2])
         x = self.conv1(x)
         x = self.bn1(x)
         x = func.relu(x, inplace=True)
@@ -1172,6 +1203,10 @@ class ResNetCoder2d(CoderBase):
         x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
         x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
         x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
+
+        x_p2_no_pad, x_p2_padding = torch.split(x_p2, self.args["block_length"], dim=1)
+        x_p2_no_pad = self.interleaver(x_p2_no_pad)
+        x_p2 = torch.cat((x_p2_no_pad, x_p2_padding), dim=1)
 
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
