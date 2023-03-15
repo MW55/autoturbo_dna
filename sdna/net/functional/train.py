@@ -106,6 +106,9 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
     noise = 0.0
     code_rate = 1
     full_corr = 0
+    full_corr_x_sys = 0
+    full_corr_x_p1 = 0
+    full_corr_x_p2 = 0
 
     with torch.no_grad():
         for i in range(0, int(args["blocks"] / args["batch_size"])):
@@ -148,12 +151,56 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                     corr+=1
             full_corr += corr/args["batch_size"]
             #print(corr)
+            corr_x_sys, corr_x_p1, corr_x_p2 = get_correct_coder(s_enc, c_dec, args)
+            full_corr_x_sys += corr_x_sys
+            full_corr_x_p1 += corr_x_p1
+            full_corr_x_p2 += corr_x_p2
 
     full_corr /= (args["blocks"] / args["batch_size"])
+    full_corr_x_sys /= (args["blocks"] / args["batch_size"])
+    full_corr_x_p1 /= (args["blocks"] / args["batch_size"])
+    full_corr_x_p2 /= (args["blocks"] / args["batch_size"])
     print("Correct packages percentage: " + str(full_corr))
+    print("Coder correct reconstruction, x_sys: " + str(full_corr_x_sys) + " x_p1: " + str(full_corr_x_p1)
+          + " x_p2: " + str(full_corr_x_p2))
     accuracy /= (args["blocks"] * args["block_length"] * code_rate) #+ int(args["redundancy"])
     stability /= (args["blocks"] / args["batch_size"])
     noise /= (args["blocks"] * args["block_length"] * 3.0)
     return accuracy, stability, noise
 
+
+def get_correct_coder(s_enc, c_dec, args):
+    x_sys_enc = s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1))
+    x_sys_enc = x_sys_enc.detach().flatten(start_dim=1).tolist()
+    x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
+    x_p1_enc = x_p1_enc.detach().flatten(start_dim=1).tolist()
+    x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
+    x_p2_enc = x_p2_enc.detach().flatten(start_dim=1).tolist()
+
+    x_sys_dec = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
+    x_sys_dec = x_sys_dec.detach().flatten(start_dim=1).tolist()
+    x_p1_dec = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
+    x_p1_dec = x_p1_dec.detach().flatten(start_dim=1).tolist()
+    x_p2_dec = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
+    x_p2_dec = x_p2_dec.detach().flatten(start_dim=1).tolist()
+
+    x_sys_corr = 0
+    x_p1_corr = 0
+    x_p2_corr = 0
+    full_corr_x_sys = 0
+    full_corr_x_p1 = 0
+    full_corr_x_p2 = 0
+
+    for i in range(len(x_sys_enc)):
+        if x_sys_enc[i] == x_sys_dec[i]:
+            x_sys_corr += 1
+        if x_p1_enc[i] == x_p1_dec[i]:
+            x_p1_corr += 1
+        if x_p2_enc[i] == x_p2_dec[i]:
+            x_p2_corr += 1
+    full_corr_x_sys += x_sys_corr / args["batch_size"]
+    full_corr_x_p1 += x_p1_corr / args["batch_size"]
+    full_corr_x_p2 += x_p2_corr / args["batch_size"]
+
+    return full_corr_x_sys, full_corr_x_p1, full_corr_x_p2
 
