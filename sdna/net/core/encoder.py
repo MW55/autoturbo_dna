@@ -1762,3 +1762,174 @@ class EncoderCNN_kernel_increase(EncoderBase):
 
         x = EncoderBase.normalize(x_o)
         return x
+
+class EncoderResNet1d(EncoderBase):
+    def __init__(self, arguments):
+        """
+        CNN based encoder with an interleaver.
+        :param arguments: Arguments as dictionary.
+        """
+        super(EncoderResNet1d, self).__init__(arguments)
+
+        self._interleaver = Interleaver()
+
+        self._dropout = torch.nn.Dropout(self.args["enc_dropout"])
+
+        self.conv1_1 = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+
+        self.conv1_2 = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+
+        self.bn1 = torch.nn.BatchNorm1d(self.args["block_length"])
+
+        layers_1 = []
+        for i in range(5): #todo n-blocks parameter!
+            layers_1.append(ResNetBlock(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"],
+                                        block_length=self.args["block_length"]))
+        self.layers_1 = torch.nn.Sequential(*layers_1)
+
+        self.conv2_1 = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=1,
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+
+        self.conv2_2 = Conv1d(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"])
+
+        self.bn2 = torch.nn.BatchNorm1d(self.args["block_length"])
+
+        layers_2 = []
+        for i in range(15): #todo n-blocks parameter!
+            layers_2.append(ResNetBlock(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"],
+                                        block_length=self.args["block_length"]))
+        self.layers_2 = torch.nn.Sequential(*layers_2)
+
+        self._linear_1 = torch.nn.Linear(self.args["enc_units"], 1)
+        self._linear_2 = torch.nn.Linear(self.args["enc_units"], 1)
+
+        if self.args["rate"] == "onethird":
+            self.conv3_1 = Conv1d(self.args["enc_actf"],
+                                  layers=self.args["enc_layers"],
+                                  in_channels=1,
+                                  out_channels=self.args["enc_units"],
+                                  kernel_size=self.args["enc_kernel"])
+
+            self.conv3_2 = Conv1d(self.args["enc_actf"],
+                                  layers=self.args["enc_layers"],
+                                  in_channels=self.args["enc_units"],
+                                  out_channels=self.args["enc_units"],
+                                  kernel_size=self.args["enc_kernel"])
+
+            self.bn3 = torch.nn.BatchNorm1d(self.args["block_length"])
+
+            layers_3 = []
+            for i in range(15):  # todo n-blocks parameter!
+                layers_3.append(ResNetBlock(self.args["enc_actf"],
+                             layers=self.args["enc_layers"],
+                             in_channels=self.args["enc_units"],
+                             out_channels=self.args["enc_units"],
+                             kernel_size=self.args["enc_kernel"],
+                             block_length=self.args["block_length"]))
+            self.layers_3 = torch.nn.Sequential(*layers_3)
+            self._linear_3 = torch.nn.Linear(self.args["enc_units"], 1)
+
+    def set_interleaver_order(self, array):
+        """
+        Inheritance function to set the models interleaver order.
+        :param array: That array that is needed to set interleaver order.
+        """
+        self._interleaver.set_order(array)
+
+    def forward(self, inputs):
+        """
+        Calculates output tensors from input tensors based on the process.
+        :param inputs: Input tensor.
+        :return: Output tensor of encoder.
+        """
+        inputs = 2.0 * inputs - 1.0
+
+        x_sys = self.conv1_1(inputs)
+        x_sys = self.bn1(x_sys)
+        x_sys = func.relu(x_sys, inplace=True)
+        x_sys = self.layers_1(x_sys)
+        x_sys = self.conv1_2(x_sys)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+
+        if self.args["rate"] == "onethird":
+            x_p1 = self.conv2_1(inputs)
+            x_p1 = self.bn2(x_p1)
+            x_p1 = func.relu(x_p1, inplace=True)
+            x_p1 = self.layers_2(x_p1)
+            x_p1 = self.conv2_2(x_p1)
+            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+
+            x_inter = self._interleaver(inputs)
+            x_p2 = self.conv3_1(x_inter)
+            x_p2 = self.bn3(x_p2)
+            x_p2 = func.relu(x_p2, inplace=True)
+            x_p2 = self.layers_3(x_p2)
+            x_p2 = self.conv3_2(x_p2)
+            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+
+            x_o = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        else:
+            x_inter = self._interleaver(inputs)
+            x_p1 = self.conv2_1(x_inter)
+            x_p1 = self.bn2(x_p1)
+            x_p1 = func.relu(x_p1, inplace=True)
+            x_p1 = self.layers_2(x_p1)
+            x_p1 = self.conv2_2(x_p1)
+            x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+            x_o = torch.cat([x_sys, x_p1], dim=2)
+
+        x = EncoderBase.normalize(x_o)
+        return x
+
+
+class ResNetBlock(torch.nn.Module):
+    def __init__(self, actf, layers, in_channels, out_channels, kernel_size,block_length):
+        super(ResNetBlock, self).__init__()
+
+        self.conv1 = Conv1d(actf, layers, in_channels, out_channels, kernel_size)
+        self.bn1 = torch.nn.BatchNorm1d(block_length)
+        self.conv2 = Conv1d(actf, layers, in_channels, out_channels, kernel_size)
+        self.bn2 = torch.nn.BatchNorm1d(block_length)
+
+        if in_channels == out_channels:
+            self.shortcut = torch.nn.Identity()
+        else:
+            self.shortcut = torch.nn.Conv1d(in_channels, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        shortcut = self.shortcut(x)
+
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = func.relu(x, inplace=True)
+
+        x = self.conv2(x)
+        x = self.bn2(x)
+
+        x += shortcut
+        x = func.relu(x, inplace=True)
+
+        return x

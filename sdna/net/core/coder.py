@@ -1226,7 +1226,7 @@ class ResNetCoder2d(CoderBase):
         return x
 
 class ResNetCoder2d_1d(CoderBase):
-    def __init__(self, arguments, in_channels=3, out_channels=64, n_blocks=15):
+    def __init__(self, arguments, in_channels=3, out_channels=64, n_blocks=20):
         super(ResNetCoder2d_1d, self).__init__(arguments)
 
         self._dropout = torch.nn.Dropout(0)

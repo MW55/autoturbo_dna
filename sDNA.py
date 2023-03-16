@@ -150,7 +150,7 @@ class SDNAArgs:
                                         dest='block_padding')
         self.net_structure.add_argument('--encoder',
                                         help='Choose which encoder to use: RNN, SRNN, CNN, SCNN or RNNatt. (default=CNN)',
-                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt', 'transformer', 'cnn_nolat', 'vae', 'vae_lat', 'gnn', 'cnn_kernel_inc'],
+                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt', 'transformer', 'cnn_nolat', 'vae', 'vae_lat', 'gnn', 'cnn_kernel_inc', 'resnet1d'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -201,7 +201,7 @@ class SDNAArgs:
                                         dest='beta')
         self.net_structure.add_argument('--decoder',
                                         help='Choose which decoder to use: RNN or CNN. (default=CNN)',
-                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat', 'entransformer', 'ensemble_dec'],
+                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat', 'entransformer', 'ensemble_dec', 'resnet1d'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',

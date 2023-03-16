@@ -21,7 +21,8 @@ ENCODERS = {
     "vae": Encoder_vae,
     "vae_lat": Encoder_vae_lat,
     "gnn": EncoderGNN,
-    "cnn_kernel_inc": EncoderCNN_kernel_increase
+    "cnn_kernel_inc": EncoderCNN_kernel_increase,
+    "resnet1d": EncoderResNet1d
 }
 
 DECODERS = {
@@ -31,7 +32,8 @@ DECODERS = {
     "transformer": DecoderTransformer,
     "cnn_nolat": DecoderCNN_nolat,
     "entransformer": DecoderEnTransformer,
-    "ensemble_dec": EnsembleDecoder
+    "ensemble_dec": EnsembleDecoder,
+    "resnet1d": DecoderResNet1d
 }
 
 CODERS = {
