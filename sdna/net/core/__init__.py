@@ -48,7 +48,8 @@ CODERS = {
     "idt": CoderIDT,
     "resnet": ResNetCoder,
     "resnet2d": ResNetCoder2d,
-    "resnet2d_1d": ResNetCoder2d_1d
+    "resnet2d_1d": ResNetCoder2d_1d,
+    "resnet_sep": ResNetCoder_sep
 }
 
 __all__ = ['AutoEncoder',

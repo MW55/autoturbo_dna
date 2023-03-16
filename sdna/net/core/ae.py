@@ -6,7 +6,7 @@ import numpy as np
 
 
 class AutoEncoder(torch.nn.Module):
-    def __init__(self, arguments, enc, dec, coder, channel):
+    def __init__(self, arguments, enc, dec, coder, channel, coder2=None, coder3=None):
         """
         Autoencoder combines the encoder, decoder as well as the coder and applies the 'noisy' channel. The combination of
         all three networks maps the model.
@@ -23,6 +23,8 @@ class AutoEncoder(torch.nn.Module):
         self.dec = dec
         self.coder = coder
         self.channel = channel
+        self.coder2 = coder2
+        self.coder3 = coder3
 
     def forward(self, inputs, padding=0, seed=0, hidden=None, validate=False):
         """
@@ -71,6 +73,14 @@ class AutoEncoder(torch.nn.Module):
             if self.args["coder"] == 'idt':
                 padded_enc = pad_data(s_enc, padding)
                 c_dec = self.coder(x, padded_enc)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
+            elif self.coder2 and self.coder3:
+                x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
+                x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
+                x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
+                x_sys_c = self.coder(x_sys)
+                x_p1_c = self.coder2(x_p1)
+                x_p2_c = self.coder3(x_p2)
+                c_dec = torch.cat([x_sys_c, x_p1_c, x_p2_c], dim=2)
             else:
                 c_dec = self.coder(x)
             if self.args["decoder"] == "rnnatt":

@@ -78,9 +78,21 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
             #    beta = 1 # Make this a hyperparameter
              #   if args["encoder"] == "vae":
              #       gradient += beta * ((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
+
+        elif mode == "coder1":
+            x_sys_enc = s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1))
+            x_sys_coder = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
+            gradient = huber_loss(x_sys_enc, x_sys_coder)
+        elif mode == "coder2":
+            x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
+            x_p1_coder = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
+            gradient = huber_loss(x_p1_enc, x_p1_coder)
+        elif mode == "coder3":
+            x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
+            x_p2_coder = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
+            gradient = huber_loss(x_p2_enc, x_p2_coder)
         else:
             gradient = huber_loss(s_enc, c_dec)
-
             #gradient = func.mse_loss(s_enc, c_dec)
         gradient.backward()
 
