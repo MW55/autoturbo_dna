@@ -27,7 +27,7 @@ class Net(object):
                                  ENCODERS[self.args["encoder"]](self.args),
                                  DECODERS[self.args["decoder"]](self.args),
                                  CODERS[self.args["coder"]](self.args),
-                                 Channel(self.args))
+                                 Channel(self.args)) 
 
         if torch.cuda.device_count() > 1 and self.args["gpu"] and self.args["parallel"]:
             self.model.enc.set_parallel()
