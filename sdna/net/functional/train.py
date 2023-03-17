@@ -83,19 +83,44 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
             x_sys_enc = s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1))
             x_sys_coder = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
             gradient = huber_loss(x_sys_enc, x_sys_coder)
+
+            #get_same_packages(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), x_sys_enc, 2, 0)
+            '''
+            flat_noise = torch.flatten(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
+            flat_x_sys_enc = torch.flatten(x_sys_enc, start_dim=1)
+
+            same_x_sys = 0
+            for i in range(flat_noise.shape[0]):
+                if torch.all(flat_noise[i] == flat_x_sys_enc[i]):
+                    same_x_sys += 1
+            print("xsys: " + str(same_x_sys))
+            '''
         elif mode == "coder2":
             x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
             x_p1_coder = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
             gradient = huber_loss(x_p1_enc, x_p1_coder)
+            #get_same_packages(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), x_p1_enc, 2, 0)
+            '''
+            flat_noise_1 = torch.flatten(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
+            flat_x_sys_enc = torch.flatten(x_p1_enc, start_dim=1)
+
+            same_x_p1 = 0
+            for i in range(flat_noise_1.shape[0]):
+                if torch.all(flat_noise_1[i] == flat_x_sys_enc[i]):
+                    same_x_p1 += 1
+            print("x_p1: " + str(same_x_p1))
+            '''
         elif mode == "coder3":
             x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
             x_p2_coder = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
             gradient = huber_loss(x_p2_enc, x_p2_coder)
+            #get_same_packages(noisy[:, :, 2].view((noisy.size()[0], noisy.size()[1], 1)), x_p2_enc, 2, 0)
         else:
             gradient = huber_loss(s_enc, c_dec)
             #gradient = func.mse_loss(s_enc, c_dec)
         gradient.backward()
-
+        #if mode in ["coder1", "coder2", "coder3"]:
+        #    print(gradient.item())
         loss += float(gradient.item())
         optimizer.step()
     loss /= (args["blocks"] / args["batch_size"])
@@ -168,6 +193,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             full_corr_x_p1 += corr_x_p1
             full_corr_x_p2 += corr_x_p2
 
+
     full_corr /= (args["blocks"] / args["batch_size"])
     full_corr_x_sys /= (args["blocks"] / args["batch_size"])
     full_corr_x_p1 /= (args["blocks"] / args["batch_size"])
@@ -216,3 +242,19 @@ def get_correct_coder(s_enc, c_dec, args):
 
     return full_corr_x_sys, full_corr_x_p1, full_corr_x_p2
 
+
+def get_same_packages(x, baseline, x_padding=None, baseline_padding=None):
+    if x_padding:
+        flat_x = torch.flatten(x, start_dim=1)[:, :-x_padding]
+    else:
+        flat_x = torch.flatten(x, start_dim=1)
+    if baseline_padding:
+        flat_baseline = torch.flatten(baseline, start_dim=1)[:, :-baseline_padding]
+    else:
+        flat_baseline = torch.flatten(baseline, start_dim=1)
+
+    same_x = 0
+    for i in range(flat_x.shape[0]):
+        if torch.all(flat_x[i] == flat_baseline[i]):
+            same_x += 1
+    print(str(same_x))

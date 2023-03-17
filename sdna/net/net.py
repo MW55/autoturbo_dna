@@ -42,6 +42,8 @@ class Net(object):
             self.model.enc.set_parallel()
             self.model.dec.set_parallel()
             self.model.coder.set_parallel()
+            self.model.coder2.set_parallel()
+            self.model.coder3.set_parallel()
 
         if not load:
             wf = func.initialize(method=self.args["init_weights"])
@@ -75,11 +77,11 @@ class Net(object):
             filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"])
         else:
             coder_optimizer = Net.optimizers(self.args["coder_optimizer"])(
-            filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"])
+            filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"]) #lr=self.args["coder_lr"]
             coder_optimizer2 = Net.optimizers(self.args["coder_optimizer"])(
-            filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"])
+            filter(lambda p: p.requires_grad, self.model.coder2.parameters()), lr=self.args["coder_lr"]) #lr=self.args["coder_lr"]
             coder_optimizer3 = Net.optimizers(self.args["coder_optimizer"])(
-            filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"])
+            filter(lambda p: p.requires_grad, self.model.coder3.parameters()), lr=self.args["coder_lr"]) #lr=self.args["coder_lr"]
         if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":
             self.scheduler_lr_dec = torch.optim.lr_scheduler.ExponentialLR(dec_optimizer, gamma=0.9)
             self.scheduler_dec = create_lr_scheduler_with_warmup(self.scheduler_lr_dec,
@@ -139,15 +141,18 @@ class Net(object):
                     res["Encoder"] = func.train(self.model, enc_optimizer, self.args, epoch=epoch, mode="encoder")
                 for i in range(self.args["dec_steps"]):
                     res["S-Decoder"] = func.train(self.model, dec_optimizer, self.args, epoch=epoch, mode="decoder")
+
                 for i in range(self.args["coder_steps"]):
                     if not self.args['separate_coder_training']:
                         res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
                     else:
-                        res["I-Decoder1"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder1")
+                        res["I-Decoder1"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch,
+                                                       mode="coder1")
                         res["I-Decoder2"] = func.train(self.model, coder_optimizer2, self.args, epoch=epoch,
                                                        mode="coder2")
                         res["I-Decoder3"] = func.train(self.model, coder_optimizer3, self.args, epoch=epoch,
                                                        mode="coder3")
+
                 res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
             #if not self.args["batch_size"] >= 256:

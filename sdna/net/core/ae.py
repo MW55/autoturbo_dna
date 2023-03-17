@@ -3,6 +3,7 @@
 import torch
 import torch.nn.functional as func
 import numpy as np
+from sdna.net.functional.train import get_same_packages
 
 
 class AutoEncoder(torch.nn.Module):
@@ -66,10 +67,20 @@ class AutoEncoder(torch.nn.Module):
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
-            x = pad_data(x, padding)
 
+            x = pad_data(x, padding)
             x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
+
             #x += noise                # some noise must be additive applied (only for testing)
+
+            '''
+            print("sys:")
+            get_same_packages(x[:, :, 0].view((x.size()[0], x.size()[1], 1)),
+                              s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1)), 2, 0)
+            print("p1:")
+            get_same_packages(x[:, :, 1].view((x.size()[0], x.size()[1], 1)),
+                              s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1)), 2, 0)
+            '''
             if self.args["coder"] == 'idt':
                 padded_enc = pad_data(s_enc, padding)
                 c_dec = self.coder(x, padded_enc)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
@@ -77,9 +88,13 @@ class AutoEncoder(torch.nn.Module):
                 x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
                 x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
                 x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
+
+                #print("sys: " + str(torch.any(x_sys == 0)))
+                #print("p1: " + str(torch.any(x_p1 == 0)))
+                #print("p2: " + str(torch.any(x_p2 == 0)))
                 x_sys_c = self.coder(x_sys)
-                x_p1_c = self.coder2(x_p1)
-                x_p2_c = self.coder3(x_p2)
+                x_p1_c = self.coder(x_p1)
+                x_p2_c = self.coder(x_p2)
                 c_dec = torch.cat([x_sys_c, x_p1_c, x_p2_c], dim=2)
             else:
                 c_dec = self.coder(x)
@@ -97,8 +112,9 @@ class AutoEncoder(torch.nn.Module):
 def pad_data(x, padding):
     # x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
     # x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
-    x = x.permute(0, 2, 1)
     # x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
+    #x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
+    x = x.permute(0, 2, 1)
     x = func.pad(x, (0, padding), mode='circular')
     x = x.permute(0, 2, 1)
     return x

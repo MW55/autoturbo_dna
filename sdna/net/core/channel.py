@@ -164,8 +164,8 @@ class Channel(object):
             x = bits[:, j]
             for n_1, n_2 in zip(x[0::2], x[1::2]):  # get sequence from code
                 try:
-                    #seq += BASE_REPRESENTATION[n_1, n_2]
-                    seq += num_to_base(mod_runner, (n_1, n_2))
+                    seq += BASE_REPRESENTATION[n_1, n_2]
+                    #seq += num_to_base(mod_runner, (n_1, n_2))
                     mod_runner+=1
                 except KeyError:
                     # print("WARNING: Error mapping bitstream to sequence, encoder output contains invalid bit.")
@@ -189,8 +189,8 @@ class Channel(object):
                 if e_i >= (shape[1] * 0.5) or int(j * n / shape[2]) + e_i >= n:
                     # print("WARNING: Padding is not sufficient, sequence cannot be mapped correctly into the bitstream.")
                     break
-                #e_1, e_2 = NUMBER_REPRESENTATION[sequence[int(j * n / shape[2]) + e_i]]
-                e_1, e_2 = base_to_num(sequence[int(j * n / shape[2]) + e_i], mod_runner)
+                e_1, e_2 = NUMBER_REPRESENTATION[sequence[int(j * n / shape[2]) + e_i]]
+                #e_1, e_2 = base_to_num(sequence[int(j * n / shape[2]) + e_i], mod_runner)
                 mod_runner+=1
                 bits[(shape[1] * j) + e_i * 2] = e_1
                 bits[(shape[1] * j) + e_i * 2 + 1] = e_2
