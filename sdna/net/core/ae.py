@@ -93,8 +93,8 @@ class AutoEncoder(torch.nn.Module):
                 #print("p1: " + str(torch.any(x_p1 == 0)))
                 #print("p2: " + str(torch.any(x_p2 == 0)))
                 x_sys_c = self.coder(x_sys)
-                x_p1_c = self.coder(x_p1)
-                x_p2_c = self.coder(x_p2)
+                x_p1_c = self.coder2(x_p1)
+                x_p2_c = self.coder3(x_p2)
                 c_dec = torch.cat([x_sys_c, x_p1_c, x_p2_c], dim=2)
             else:
                 c_dec = self.coder(x)
