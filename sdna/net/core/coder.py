@@ -1351,3 +1351,63 @@ class ResNetCoder_sep(CoderBase):
 
         return x
 
+class ResNetCoder_conc(CoderBase):
+    def __init__(self, arguments, in_channels=1, out_channels=64, n_blocks=5): #ToDo use the config
+        super(ResNetCoder_conc, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(0)
+
+        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
+        '''
+        self._cnn1 = Conv1d(self.args["coder_actf"],
+                           layers=self.args["coder_layers"],
+                           in_channels=1,
+                           out_channels=self.args["coder_units"],
+                           kernel_size=3) #self.args["coder_kernel"]
+        
+        self._linear = torch.nn.Linear(self.args["coder_units"] * 3 * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]*3)
+        '''
+        self._linear = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"])*3, self.args["block_length"]*3)
+
+
+        self._cnn1 = torch.nn.Conv1d(in_channels, out_channels, kernel_size=27, padding=13)
+        self.bn1 = torch.nn.BatchNorm1d(out_channels) #out_channels
+
+        layers = []
+        for i in range(n_blocks):
+            layers.append(ResNetBlock(out_channels, out_channels, kernel_size=21, padding=10)) #21, 10
+        self.layers = torch.nn.Sequential(*layers)
+
+        '''
+        self._cnn2 = Conv1d(self.args["coder_actf"],
+                           layers=self.args["coder_layers"],
+                           in_channels=self.args["coder_units"],
+                           out_channels=1,
+                           kernel_size=15) #self.args["coder_kernel"]
+        '''
+        self._cnn2 = torch.nn.Conv1d(out_channels, in_channels, kernel_size=29, padding=14)
+
+    def forward(self, inputs):
+        #x = inputs.transpose(1, 2).reshape(self.args["batch_size"], -1, 1)
+
+        x = inputs.transpose(1, 2).reshape(self.args["batch_size"], -1, 1).transpose(1, 2)
+
+        x = self._cnn1(x)
+        x = self.bn1(x)
+        x = func.relu(x, inplace=True)
+
+        x = self.layers(x)
+
+        x = self._cnn2(x)
+
+        x = torch.flatten(x, start_dim=1)
+        x = self.actf(self._dropout(self._linear(x)))
+        x = x.reshape((inputs.size()[0], self.args["block_length"], 3))
+
+        x = Quantizer.apply(x)
+
+        #x = x.view(-1, (self.args["block_length"] + self.args["block_padding"]) * 3)
+        #x = self.fc(x)
+        #x = x.view(-1, self.args["block_length"], 3)
+
+        return x

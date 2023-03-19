@@ -262,7 +262,7 @@ class SDNAArgs:
                                         dest='extrinsic')
         self.net_structure.add_argument('--coder',
                                         help='Choose which coder to use: MLP, CNN or RNN. (default=CNN)',
-                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn', 'cnn_conc', 'cnn_ensemble', "idt", "resnet", "resnet2d", "resnet2d_1d", "resnet_ens", "resnet_sep"],
+                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn', 'cnn_conc', 'cnn_ensemble', "idt", "resnet", "resnet2d", "resnet2d_1d", "resnet_ens", "resnet_sep","resnet_conc"],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',

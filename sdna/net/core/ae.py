@@ -113,8 +113,8 @@ def pad_data(x, padding):
     # x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
     # x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
     # x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
-    #x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
-    x = x.permute(0, 2, 1)
-    x = func.pad(x, (0, padding), mode='circular')
-    x = x.permute(0, 2, 1)
+    x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
+    #x = x.permute(0, 2, 1)
+    #x = func.pad(x, (0, padding), mode='circular')
+    #x = x.permute(0, 2, 1)
     return x

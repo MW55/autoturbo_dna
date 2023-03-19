@@ -87,6 +87,8 @@ class Channel(object):
         if padding <= 0:
             modes = ["mismatch"]
             padding = 0
+        else:
+            modes = ["insertion", "deletion"]
         #padding=0
         shape = (inputs.size()[0], inputs.size()[1] + padding, inputs.size()[2])
 
