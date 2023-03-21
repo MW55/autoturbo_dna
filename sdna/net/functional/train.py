@@ -32,7 +32,11 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
     #tesing_done
 
     for i in range(0, int(args["blocks"] / args["batch_size"])):
-        optimizer.zero_grad()
+        if mode == "combined":
+            for opt in optimizer:
+                opt.zero_grad()
+        else:
+            optimizer.zero_grad()
         #print(i)
         ### testing
         #rand = np.random.randint(0, 100)
@@ -54,13 +58,15 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
             s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, hidden=hidden)
             hidden = s_dec[1]
             s_dec = s_dec[0]
+        elif mode == 'combined':
+            s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, validate=True)
         else:
             s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch)
             ###
             #if i == 0:
             #    print("padding: " + str(padding))
                 ###
-        if mode == "all" or mode == "encoder" or mode == "decoder":
+        if mode == "all" or mode == "encoder" or mode == "decoder" or mode == 'combined':
             s_dec = torch.clamp(s_dec, 0.0, 1.0)
             if args['encoder'] == 'rnnatt':
                 hidden = s_dec[1]
@@ -122,7 +128,12 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         #if mode in ["coder1", "coder2", "coder3"]:
         #    print(gradient.item())
         loss += float(gradient.item())
-        optimizer.step()
+        if mode == "combined":
+            for opt in optimizer:
+                opt.step()
+        else:
+            optimizer.step()
+
     loss /= (args["blocks"] / args["batch_size"])
     return loss
 
@@ -152,7 +163,14 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             x_val = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
             #x_val = torch.cat((x_val, torch.zeros(256, 16, 1)), dim=1)
             #x_val = torch.randint(0, 1, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-
+            '''
+            padding = args["block_padding"]
+            s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch, validate=True)
+            stability += (1.0 - model.channel.evaluate(s_enc.detach()))
+            s_dec = torch.clamp(s_dec, 0.0, 1.0)
+            s_dec = torch.round(s_dec.detach())
+            accuracy += torch.sum(s_dec.eq(x_val.detach())).item()
+            '''
             padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"]
             if args['encoder'] == 'rnnatt':
                 s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch, hidden=hidden)
@@ -180,6 +198,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
 
             equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
             noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
+
             flat_inp = x_val.detach().flatten(start_dim=1).tolist()
             flat_outp = s_dec.detach().flatten(start_dim=1).tolist()
             corr = 0

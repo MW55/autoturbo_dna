@@ -1411,3 +1411,42 @@ class ResNetCoder_conc(CoderBase):
         #x = x.view(-1, self.args["block_length"], 3)
 
         return x
+
+class CNN_sep(CoderBase):
+    def __init__(self, arguments, in_channels=10, out_channels=64, n_blocks=5): #ToDo use the config
+        super(CNN_sep, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
+
+        #self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
+
+        #self.conv1 = torch.nn.Conv1d(in_channels, out_channels, kernel_size=5, padding=2) #3,1
+        self._cnn_1 = Conv1d(self.args["coder_actf"],
+                             layers=self.args["coder_layers"],
+                             in_channels=1,
+                             out_channels=self.args["coder_units"],
+                             kernel_size=self.args["coder_kernel"])
+        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+
+        #self.bn1 = torch.nn.BatchNorm1d(out_channels)
+
+        #self.conv2 = torch.nn.Conv1d(out_channels, in_channels, kernel_size=5, padding=2) #3,1
+
+    def forward(self, inputs):
+        #x = self.conv1(inputs)
+        #x = self.bn1(x)
+        #x = func.relu(x, inplace=True)
+        #x = self.layers(x)
+        #x = self.conv2(x)
+
+        x = self._cnn_1(inputs)
+        x = torch.flatten(x, start_dim=1)
+        x = self.actf(self._dropout(self._linear_1(x)))
+        x = x.reshape((inputs.size()[0], self.args["block_length"], 1))
+        x = Quantizer.apply(x)
+
+        #x = x.view(-1, (self.args["block_length"] + self.args["block_padding"]) * 3)
+        #x = self.fc(x)
+        #x = x.view(-1, self.args["block_length"], 3)
+
+        return x

@@ -46,7 +46,7 @@ class Channel(object):
         self.args = arguments
         self._dna_simulator = Sim(self.args)
 
-    def generate_noise(self, inputs, padding, seed, channel="dna"):
+    def generate_noise(self, inputs, padding, seed, validate, channel="dna"):
         """
         Generates a 'noisy' channel depending on the specifications.
 
@@ -59,7 +59,7 @@ class Channel(object):
         :note: The channel should actually only simulate DNA errors, the others are purely suitable for testing.
         """
         if channel.lower() == "dna":
-            return self._dna_channel(inputs, padding, seed)
+            return self._dna_channel(inputs, padding, seed, validate)
         elif channel.lower() == "bec":      # binary erasure channel
             shape = (inputs.size()[0], inputs.size()[1] + padding, inputs.size()[2])
             sigma = 0.1
@@ -69,9 +69,9 @@ class Channel(object):
             sigma = 0.1
             return sigma * torch.randn(shape, dtype=torch.float32)
         else:
-            return self._dna_channel(inputs, padding, seed)
+            return self._dna_channel(inputs, padding, seed, validate)
 
-    def _dna_channel(self, inputs, padding, seed):
+    def _dna_channel(self, inputs, padding, seed, validate):
         """
         The function generates noise from the encoding stream using the DNA synthesis, storage and sequencing simulator.
 
@@ -83,8 +83,9 @@ class Channel(object):
         :note: The output tensor becomes larger depending on the padding, with a padding of zero only
         mismatches are applied.
         """
-        modes = ["insertion", "deletion", "mismatch"]
-        if padding <= 0:
+        if validate:
+            modes = ["insertion", "deletion", "mismatch"]
+        elif padding <= 0:
             modes = ["mismatch"]
             padding = 0
         else:

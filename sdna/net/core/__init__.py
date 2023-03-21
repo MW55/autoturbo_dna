@@ -50,7 +50,8 @@ CODERS = {
     "resnet2d": ResNetCoder2d,
     "resnet2d_1d": ResNetCoder2d_1d,
     "resnet_sep": ResNetCoder_sep,
-    "resnet_conc": ResNetCoder_conc
+    "resnet_conc": ResNetCoder_conc,
+    "cnn_sep": CNN_sep
 }
 
 __all__ = ['AutoEncoder',

@@ -53,7 +53,7 @@ class AutoEncoder(torch.nn.Module):
         else:
             x = self.enc(inputs)        # stream encoder => in (0, +1) | out (-1, +1)
         s_enc = x.clone()
-        noise = self.channel.generate_noise(x, padding, seed)
+        noise = self.channel.generate_noise(x, padding, seed, validate)
         noise = noise.cuda() if self.args["gpu"] else noise
 
         if padding <= 0:
