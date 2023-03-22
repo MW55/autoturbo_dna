@@ -111,7 +111,9 @@ class Conv1d(torch.nn.Module):
         inputs = torch.transpose(inputs, 1, 2)
         x_t = inputs
         for i in range(self._layers):
-            x_t = self.actf(self._cnns[i](x_t))
+            x_t = self._cnns[i](x_t)
+            x_t = self.actf(x_t)
+            #x_t = self.actf(self._cnns[i](x_t))
 
         x = torch.transpose(x_t, 1, 2)
         return x

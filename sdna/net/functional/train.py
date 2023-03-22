@@ -179,7 +179,8 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             else:
                 s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch, validate=True)
             #print("validate")
-            stability += (1.0 - model.channel.evaluate(s_enc.detach()))
+            if not args["continuous"]:
+                stability += (1.0 - model.channel.evaluate(s_enc.detach()))
 
             if mode == "all" or mode == "encoder" or mode == "decoder":
                 s_dec = torch.clamp(s_dec, 0.0, 1.0)
@@ -196,9 +197,11 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                     print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_enc.eq(c_dec.detach())).item()
 
-            equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
-            noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
-
+            if not args["continuous"]:
+                equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
+                noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
+            else:
+                noise = 1
             flat_inp = x_val.detach().flatten(start_dim=1).tolist()
             flat_outp = s_dec.detach().flatten(start_dim=1).tolist()
             corr = 0

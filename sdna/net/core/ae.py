@@ -3,7 +3,7 @@
 import torch
 import torch.nn.functional as func
 import numpy as np
-from sdna.net.functional.train import get_same_packages
+#from sdna.net.functional.train import get_same_packages
 
 
 class AutoEncoder(torch.nn.Module):
@@ -53,11 +53,15 @@ class AutoEncoder(torch.nn.Module):
         else:
             x = self.enc(inputs)        # stream encoder => in (0, +1) | out (-1, +1)
         s_enc = x.clone()
-        noise = self.channel.generate_noise(x, padding, seed, validate)
-        noise = noise.cuda() if self.args["gpu"] else noise
+        if not self.args["continuous"]:
+            noise = self.channel.generate_noise(x, padding, seed, validate)
+            noise = noise.cuda() if self.args["gpu"] else noise
 
         if padding <= 0:
-            x *= noise                # noisy channel => in (-1, +1) | out (-1, +1)
+            if self.args["continuous"]:
+                x = self.channel.generate_noise(x, 0, seed, validate)
+            else:
+                x *= noise                # noisy channel => in (-1, +1) | out (-1, +1)
             c_dec = []
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(x, hidden, s_enc)
@@ -67,9 +71,11 @@ class AutoEncoder(torch.nn.Module):
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
-
             x = pad_data(x, padding)
-            x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
+            if self.args["continuous"]:
+                x = self.channel.generate_noise(x, padding, seed, validate)
+            else:
+                x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
 
             #x += noise                # some noise must be additive applied (only for testing)
 

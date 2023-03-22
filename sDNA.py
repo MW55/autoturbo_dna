@@ -319,12 +319,13 @@ class SDNAArgs:
                                         default=0,
                                         metavar='X',
                                         dest='redundancy')
-        self.net_structure.add_argument('--ens_models',
+        self.net_structure.add_argument('--ens-models',
                                         help='If ensemble coders are used, defines the number of coder instances in the ensemble.',
                                         type=int,
                                         default=3,
                                         metavar='X',
                                         dest='n_models')
+
     def _net_training(self):
         """
         Function to generate the arguments for 'NN training parameters'.
@@ -418,6 +419,10 @@ class SDNAArgs:
                                        help="If the coder should be split into 3 seperate instances during training.",
                                        action='store_true',
                                        dest='separate_coder_training')
+        self.net_training.add_argument("--continuous",
+                                       help="train the encoder without binarization.",
+                                       action="store_true",
+                                       dest="continuous")
 
     def _dna_error_simulation(self):
         """

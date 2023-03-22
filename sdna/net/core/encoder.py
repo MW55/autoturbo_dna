@@ -1316,7 +1316,10 @@ class Encoder_vae(EncoderBase):
         #test
         #x_o = self.gumbel_softmax(x_o, 1.0)
         #test done
-        x = EncoderBase.normalize(x_o)
+        if not self.args["continuous"]:
+            x = EncoderBase.normalize(x_o)
+        else:
+            x = x_o
         #x = self.final_actf.forward(x)
         return x
 

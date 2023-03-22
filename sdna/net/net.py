@@ -154,7 +154,7 @@ class Net(object):
                                                        mode="coder3")
                 all_optimizers = [enc_optimizer, dec_optimizer,
                                   coder_optimizer] if not self.args['separate_coder_training'] else [enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3]
-                for i in range(5): #combined_steps
+                for i in range(20): #combined_steps
                     res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined")
 
                 res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
