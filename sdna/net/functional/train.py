@@ -128,6 +128,11 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         #if mode in ["coder1", "coder2", "coder3"]:
         #    print(gradient.item())
         loss += float(gradient.item())
+
+        #testing
+        torch.nn.utils.clip_grad_norm(model.parameters(), 1) #0.5
+        ###
+
         if mode == "combined":
             for opt in optimizer:
                 opt.step()

@@ -83,7 +83,7 @@ class Channel(object):
                         for i in range(len(self._dna_simulator.error_rates))])
         #p_insert = 0.001
         #p_delete = 0.001
-        awgn_var = 0.1
+        awgn_var = 0.6
 
         if np.random.randint(3) == 0:  # Account for error-free sequences
             return inputs
