@@ -46,7 +46,7 @@ class Channel(object):
         self.args = arguments
         self._dna_simulator = Sim(self.args)
 
-    def generate_noise(self, inputs, padding, seed, validate, channel="continuous"): #dna
+    def generate_noise(self, inputs, padding, seed, validate, channel="dna"): #dna #continuous
         """
         Generates a 'noisy' channel depending on the specifications.
 

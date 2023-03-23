@@ -122,7 +122,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
             gradient = huber_loss(x_p2_enc, x_p2_coder)
             #get_same_packages(noisy[:, :, 2].view((noisy.size()[0], noisy.size()[1], 1)), x_p2_enc, 2, 0)
         else:
-            gradient = huber_loss(s_enc, c_dec)
+            gradient = huber_loss(s_dec, x_train)
+            #gradient = huber_loss(s_enc, c_dec)
             #gradient = func.mse_loss(s_enc, c_dec)
         gradient.backward()
         #if mode in ["coder1", "coder2", "coder3"]:
