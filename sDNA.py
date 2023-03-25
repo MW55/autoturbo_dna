@@ -427,6 +427,14 @@ class SDNAArgs:
                                        help="train each part of the model always with all error types.",
                                        action="store_true",
                                        dest='all_errors')
+        self.net_training.add_argument("--channel",
+                                       help="which channel model should be used for training",
+                                       choices=['awgn', 'bec', 'dna', 'continuous', 'basic_dna'],
+                                       type=str.lower,
+                                       default='dna',
+                                       metavar='CHOICE',
+                                       dest='channel'
+                                       )
 
     def _dna_error_simulation(self):
         """

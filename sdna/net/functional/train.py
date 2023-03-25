@@ -6,7 +6,7 @@ import torch.nn.functional as func
 from sdna.net.core.channel import MarkovModelKL
 
 
-def train(model, optimizer, args, epoch=1, mode="encoder"):
+def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
     """
     Trains the model depending on the mode and optimizer.
 
@@ -50,7 +50,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         x_train = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
         #x_train = torch.cat((x_train, torch.zeros(256, 16, 1)), dim=1)
 
-        if args["all_errors"]:
+        if args["all_errors"] and not warmup:
             padding = args["block_padding"]
             s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, validate=True)
             s_dec = torch.clamp(s_dec, 0.0, 1.0)
@@ -219,7 +219,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                     print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_enc.eq(c_dec.detach())).item()
 
-            if not args["continuous"]:
+            if not args["continuous"] and not args["channel"] == "simple_dna":
                 equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
                 noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
             else:

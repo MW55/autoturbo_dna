@@ -54,12 +54,12 @@ class AutoEncoder(torch.nn.Module):
             x = self.enc(inputs)        # stream encoder => in (0, +1) | out (-1, +1)
         s_enc = x.clone()
         if not self.args["continuous"]:
-            noise = self.channel.generate_noise(x, padding, seed, validate)
+            noise = self.channel.generate_noise(x, padding, seed, validate, self.args["channel"])
             noise = noise.cuda() if self.args["gpu"] else noise
 
         if padding <= 0:
-            if self.args["continuous"]:
-                x = self.channel.generate_noise(x, 0, seed, validate)
+            if self.args["continuous"] or self.args["channel"] == 'basic_dna':
+                x = self.channel.generate_noise(x, 0, seed, validate, self.args["channel"])
             else:
                 x *= noise                # noisy channel => in (-1, +1) | out (-1, +1)
             c_dec = []
@@ -72,8 +72,8 @@ class AutoEncoder(torch.nn.Module):
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
             x = pad_data(x, padding)
-            if self.args["continuous"]:
-                x = self.channel.generate_noise(x, padding, seed, validate)
+            if self.args["continuous"] or self.args["channel"] == "basic_dna":
+                x = self.channel.generate_noise(x, padding, seed, validate, self.args["channel"])
             else:
                 x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
 

@@ -127,35 +127,39 @@ class Net(object):
             #    indel_mult -= 1
             #    self.model.channel._dna_simulator.indel_multiplier = indel_mult
              #
+            if epoch < 10: #Todo: warmup steps, should be defined in the config
+                warmup = True
+            else:
+                warmup = False
             if self.args[
                 "simultaneously_training"]:  # train modules of model simultaneously or separately from each other
                 for i in range(self.args["enc_steps"]):
                     res["Encoder"] = res["S-Decoder"] = func.train(self.model, ae_optimizer, self.args, epoch=epoch,
-                                                                   mode="encoder")
+                                                                   mode="encoder", warmup = warmup)
                 for i in range(self.args["coder_steps"]):
-                    res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
+                    res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder", warmup = warmup)
                 res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
             else:
                 for i in range(self.args["enc_steps"]):
-                    res["Encoder"] = func.train(self.model, enc_optimizer, self.args, epoch=epoch, mode="encoder")
+                    res["Encoder"] = func.train(self.model, enc_optimizer, self.args, epoch=epoch, mode="encoder", warmup = warmup)
                 for i in range(self.args["dec_steps"]):
-                    res["S-Decoder"] = func.train(self.model, dec_optimizer, self.args, epoch=epoch, mode="decoder")
+                    res["S-Decoder"] = func.train(self.model, dec_optimizer, self.args, epoch=epoch, mode="decoder", warmup = warmup)
 
                 for i in range(self.args["coder_steps"]):
                     if not self.args['separate_coder_training']:
-                        res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
+                        res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder", warmup = warmup)
                     else:
                         res["I-Decoder1"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch,
-                                                       mode="coder1")
+                                                       mode="coder1", warmup = warmup)
                         res["I-Decoder2"] = func.train(self.model, coder_optimizer2, self.args, epoch=epoch,
-                                                       mode="coder2")
+                                                       mode="coder2", warmup = warmup)
                         res["I-Decoder3"] = func.train(self.model, coder_optimizer3, self.args, epoch=epoch,
-                                                       mode="coder3")
+                                                       mode="coder3", warmup = warmup)
                 all_optimizers = [enc_optimizer, dec_optimizer,
                                   coder_optimizer] if not self.args['separate_coder_training'] else [enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3]
                 for i in range(20): #combined_steps
-                    res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined")
+                    res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined", warmup = warmup)
 
                 res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")

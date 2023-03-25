@@ -46,7 +46,7 @@ class Channel(object):
         self.args = arguments
         self._dna_simulator = Sim(self.args)
 
-    def generate_noise(self, inputs, padding, seed, validate, channel="continuous"): #dna #continuous
+    def generate_noise(self, inputs, padding, seed, validate, channel="basic_dna"): #dna #continuous #basic_dna
         """
         Generates a 'noisy' channel depending on the specifications.
 
@@ -71,8 +71,94 @@ class Channel(object):
         elif channel.lower() == "continuous":
             #noise = (0.1 ** 0.5) * torch.randn(inputs.shape)
             return self._continuous_channel(inputs, padding, seed, validate)
+        elif channel.lower() == "basic_dna":
+            return self._basic_dna_channel(inputs, padding, seed, validate)
         else:
             return self._dna_channel(inputs, padding, seed, validate)
+
+    def _basic_dna_channel(self, inputs, padding, seed, validate):
+        p_insert = sum([(self._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
+                         * self._dna_simulator.error_rates[i]["err_rate"]["insertion"])
+                        for i in range(len(self._dna_simulator.error_rates))])
+        p_delete = sum([(self._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
+                         * self._dna_simulator.error_rates[i]["err_rate"]["deletion"])
+                        for i in range(len(self._dna_simulator.error_rates))])
+        p_sub = sum([(self._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
+                         * self._dna_simulator.error_rates[i]["err_rate"]["mismatch"])
+                        for i in range(len(self._dna_simulator.error_rates))])
+        #p_insert = 0.001
+        #p_delete = 0.001
+        awgn_var = 0.6
+
+        if np.random.randint(3) == 0:  # Account for error-free sequences
+            return inputs
+
+        if validate:
+            modes = ["insertion", "deletion", "mismatch"]
+        elif padding <= 0:
+            modes = ["mismatch"]
+            padding = 0
+        else:
+            modes = ["insertion", "deletion", "mismatch"] #remove mismatch
+        #padding=0
+        shape = (inputs.size()[0], inputs.size()[1], inputs.size()[2])
+
+        outp = inputs
+        x_sys = outp[:, :, 0].view((outp.size()[0], outp.size()[1], 1)).cpu().detach().numpy()
+        x_p1 = outp[:, :, 1].view((outp.size()[0], outp.size()[1], 1)).cpu().detach().numpy()
+        x_p2 = outp[:, :, 2].view((outp.size()[0], outp.size()[1], 1)).cpu().detach().numpy()
+        # Add insertions and deletions
+        outp = list()
+        for seq in [x_sys, x_p1, x_p2]:
+            out_tens = list()
+            for z, code in enumerate(seq):
+                code = list(code)
+                inserts = 0
+                deletions = 0
+                subs = 0
+                for i in range(len(code)):
+                    if "insertion" in modes:
+                        if np.random.uniform(0, 1, 1) < p_insert/2:
+                            inserts += 1
+                    if "deletion" in modes:
+                        if np.random.uniform(0, 1, 1) < p_delete/2:
+                            deletions += 1
+                    if "mismatch" in modes:
+                        if np.random.uniform(0, 1, 1) < p_sub/2: #p_sub has to be divided by two, as each error changes two consecutive symbols, given that 1 base encodes two symbols/bits
+                            subs += 1
+                if subs:
+                    for _ in range(subs):
+                        index = np.random.choice(range(0, len(code), 2))
+                        val = [np.random.choice([1.0, -1.0], 1), np.random.choice([1.0, -1.0], 1)]
+                        code = code[:index] + val + code[index+2:]
+                if inserts:
+                    for _ in range(inserts):
+                        index = np.random.choice(range(0, len(code), 2))
+                        val = [np.random.choice([1.0, -1.0], 1), np.random.choice([1.0, -1.0], 1)]
+                        code = code[:index] + val + (code[index:])
+                if deletions:
+                    for _ in range(deletions):
+                        index = np.random.choice(range(0, len(code), 2))
+                        if index > len(code)-2:
+                            code = code[:index]
+                        else:
+                            code = code[:index] + code[index+2:]
+                if len(code) > inputs.shape[1]:
+                    code = code[:inputs.shape[1]]
+                elif len(code) < inputs.shape[1]:
+                    diff = inputs.shape[1] - len(code)
+                    code = code + [0]*diff
+                out_tens.append(code)
+            outp.append(out_tens)
+        #if type(outp)
+        outp = np.array(outp).astype("float32")
+        outp = torch.from_numpy(outp)
+        outp = torch.tensor(outp)
+        x_sys_out = torch.tensor(outp[0]).unsqueeze(-1)
+        x_p1_out = torch.tensor(outp[1]).unsqueeze(-1)
+        x_p2_out = torch.tensor(outp[2]).unsqueeze(-1)
+        outp = torch.cat([x_sys_out, x_p1_out, x_p2_out], dim=2)
+        return outp
 
     def _continuous_channel(self, inputs, padding, seed, validate):
         p_insert = sum([(self._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
