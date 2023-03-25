@@ -545,8 +545,8 @@ class CoderCNN_nolat(CoderBase):
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
-        if not self.args["continuous"]:
-            x = Quantizer.apply(x)
+        #if not self.args["continuous"]:
+        #    x = Quantizer.apply(x)
         return x
 
 class CoderCNN_RNN(CoderBase):

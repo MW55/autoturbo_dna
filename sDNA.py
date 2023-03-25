@@ -423,6 +423,10 @@ class SDNAArgs:
                                        help="train the encoder without binarization.",
                                        action="store_true",
                                        dest="continuous")
+        self.net_training.add_argument("--all-errors",
+                                       help="train each part of the model always with all error types.",
+                                       action="store_true",
+                                       dest='all_errors')
 
     def _dna_error_simulation(self):
         """

@@ -50,95 +50,111 @@ def train(model, optimizer, args, epoch=1, mode="encoder"):
         x_train = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
         #x_train = torch.cat((x_train, torch.zeros(256, 16, 1)), dim=1)
 
-
-
-        padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"] #TODO turn on padding all the time?
-        #padding = args["block_padding"]
-        if args['encoder'] == 'rnnatt':
-            s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, hidden=hidden)
-            hidden = s_dec[1]
-            s_dec = s_dec[0]
-        elif mode == 'combined':
+        if args["all_errors"]:
+            padding = args["block_padding"]
             s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, validate=True)
-        else:
-            s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch)
-            ###
-            #if i == 0:
-            #    print("padding: " + str(padding))
-                ###
-        if mode == "all" or mode == "encoder" or mode == "decoder" or mode == 'combined':
             s_dec = torch.clamp(s_dec, 0.0, 1.0)
             if args['encoder'] == 'rnnatt':
                 hidden = s_dec[1]
             gradient = huber_loss(s_dec, x_train)
-            #gradient = func.binary_cross_entropy(s_dec, x_train)
-            #if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
-            #    gradient += model.channel.evaluate(s_enc) #kl, *1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
-            #    if args["encoder"] == "vae":
-            #        gradient += args['beta']*((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
-                #if np.random.randint(0, 2) == 0:
-                #    gradient += model.channel.evaluate(s_enc)/2
-                #else:
-                #    gradient.data = torch.tensor(model.channel.evaluate(s_enc) / 2)
-            #if mode == "decoder":
-            #    beta = 1 # Make this a hyperparameter
-             #   if args["encoder"] == "vae":
-             #       gradient += beta * ((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
+            gradient.backward()
+            loss += float(gradient.item())
 
-        elif mode == "coder1":
-            x_sys_enc = s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1))
-            x_sys_coder = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
-            gradient = huber_loss(x_sys_enc, x_sys_coder)
+            torch.nn.utils.clip_grad_norm(model.parameters(), 1)  # 0.5
 
-            #get_same_packages(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), x_sys_enc, 2, 0)
-            '''
-            flat_noise = torch.flatten(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
-            flat_x_sys_enc = torch.flatten(x_sys_enc, start_dim=1)
-
-            same_x_sys = 0
-            for i in range(flat_noise.shape[0]):
-                if torch.all(flat_noise[i] == flat_x_sys_enc[i]):
-                    same_x_sys += 1
-            print("xsys: " + str(same_x_sys))
-            '''
-        elif mode == "coder2":
-            x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
-            x_p1_coder = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
-            gradient = huber_loss(x_p1_enc, x_p1_coder)
-            #get_same_packages(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), x_p1_enc, 2, 0)
-            '''
-            flat_noise_1 = torch.flatten(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
-            flat_x_sys_enc = torch.flatten(x_p1_enc, start_dim=1)
-
-            same_x_p1 = 0
-            for i in range(flat_noise_1.shape[0]):
-                if torch.all(flat_noise_1[i] == flat_x_sys_enc[i]):
-                    same_x_p1 += 1
-            print("x_p1: " + str(same_x_p1))
-            '''
-        elif mode == "coder3":
-            x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
-            x_p2_coder = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
-            gradient = huber_loss(x_p2_enc, x_p2_coder)
-            #get_same_packages(noisy[:, :, 2].view((noisy.size()[0], noisy.size()[1], 1)), x_p2_enc, 2, 0)
+            if mode == "combined":
+                for opt in optimizer:
+                    opt.step()
+            else:
+                optimizer.step()
         else:
-            gradient = huber_loss(s_dec, x_train)
-            #gradient = huber_loss(s_enc, c_dec)
-            #gradient = func.mse_loss(s_enc, c_dec)
-        gradient.backward()
-        #if mode in ["coder1", "coder2", "coder3"]:
-        #    print(gradient.item())
-        loss += float(gradient.item())
+            padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"] #TODO turn on padding all the time?
+            #padding = args["block_padding"]
+            if args['encoder'] == 'rnnatt':
+                s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, hidden=hidden)
+                hidden = s_dec[1]
+                s_dec = s_dec[0]
+            elif mode == 'combined':
+                s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, validate=True)
+            else:
+                s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch)
+                ###
+                #if i == 0:
+                #    print("padding: " + str(padding))
+                    ###
+            if mode == "all" or mode == "encoder" or mode == "decoder" or mode == 'combined':
+                s_dec = torch.clamp(s_dec, 0.0, 1.0)
+                if args['encoder'] == 'rnnatt':
+                    hidden = s_dec[1]
+                gradient = huber_loss(s_dec, x_train)
+                #gradient = func.binary_cross_entropy(s_dec, x_train)
+                #if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
+                #    gradient += model.channel.evaluate(s_enc) #kl, *1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
+                #    if args["encoder"] == "vae":
+                #        gradient += args['beta']*((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
+                    #if np.random.randint(0, 2) == 0:
+                    #    gradient += model.channel.evaluate(s_enc)/2
+                    #else:
+                    #    gradient.data = torch.tensor(model.channel.evaluate(s_enc) / 2)
+                #if mode == "decoder":
+                #    beta = 1 # Make this a hyperparameter
+                 #   if args["encoder"] == "vae":
+                 #       gradient += beta * ((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
 
-        #testing
-        torch.nn.utils.clip_grad_norm(model.parameters(), 1) #0.5
-        ###
+            elif mode == "coder1":
+                x_sys_enc = s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1))
+                x_sys_coder = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
+                gradient = huber_loss(x_sys_enc, x_sys_coder)
 
-        if mode == "combined":
-            for opt in optimizer:
-                opt.step()
-        else:
-            optimizer.step()
+                #get_same_packages(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), x_sys_enc, 2, 0)
+                '''
+                flat_noise = torch.flatten(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
+                flat_x_sys_enc = torch.flatten(x_sys_enc, start_dim=1)
+    
+                same_x_sys = 0
+                for i in range(flat_noise.shape[0]):
+                    if torch.all(flat_noise[i] == flat_x_sys_enc[i]):
+                        same_x_sys += 1
+                print("xsys: " + str(same_x_sys))
+                '''
+            elif mode == "coder2":
+                x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
+                x_p1_coder = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
+                gradient = huber_loss(x_p1_enc, x_p1_coder)
+                #get_same_packages(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), x_p1_enc, 2, 0)
+                '''
+                flat_noise_1 = torch.flatten(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
+                flat_x_sys_enc = torch.flatten(x_p1_enc, start_dim=1)
+    
+                same_x_p1 = 0
+                for i in range(flat_noise_1.shape[0]):
+                    if torch.all(flat_noise_1[i] == flat_x_sys_enc[i]):
+                        same_x_p1 += 1
+                print("x_p1: " + str(same_x_p1))
+                '''
+            elif mode == "coder3":
+                x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
+                x_p2_coder = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
+                gradient = huber_loss(x_p2_enc, x_p2_coder)
+                #get_same_packages(noisy[:, :, 2].view((noisy.size()[0], noisy.size()[1], 1)), x_p2_enc, 2, 0)
+            else:
+                gradient = huber_loss(s_dec, x_train)
+                #gradient = huber_loss(s_enc, c_dec)
+                #gradient = func.mse_loss(s_enc, c_dec)
+            gradient.backward()
+            #if mode in ["coder1", "coder2", "coder3"]:
+            #    print(gradient.item())
+            loss += float(gradient.item())
+
+            #testing
+            torch.nn.utils.clip_grad_norm(model.parameters(), 1) #0.5
+            ###
+
+            if mode == "combined":
+                for opt in optimizer:
+                    opt.step()
+            else:
+                optimizer.step()
 
     loss /= (args["blocks"] / args["batch_size"])
     return loss
