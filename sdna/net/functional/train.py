@@ -219,7 +219,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                     print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_enc.eq(c_dec.detach())).item()
 
-            if not args["continuous"] and not args["channel"] == "simple_dna":
+            if not args["continuous"] and not args["channel"] == "basic_dna":
                 equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
                 noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
             else:
