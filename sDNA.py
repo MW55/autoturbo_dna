@@ -429,7 +429,7 @@ class SDNAArgs:
                                        dest='all_errors')
         self.net_training.add_argument("--channel",
                                        help="which channel model should be used for training",
-                                       choices=['awgn', 'bec', 'dna', 'continuous', 'basic_dna'],
+                                       choices=['awgn', 'bec', 'dna', 'continuous', 'basic_dna', 'conc_dna'],
                                        type=str.lower,
                                        default='dna',
                                        metavar='CHOICE',
