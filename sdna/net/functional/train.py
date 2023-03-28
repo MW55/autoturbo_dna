@@ -147,7 +147,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
             loss += float(gradient.item())
 
             #testing
-            torch.nn.utils.clip_grad_norm(model.parameters(), 1) #0.5
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1) #0.5
             ###
 
             if mode == "combined":
@@ -219,7 +219,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                     print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_enc.eq(c_dec.detach())).item()
 
-            if not args["continuous"] and not args["channel"] == "basic_dna":
+            if not args["continuous"] and not args["channel"] in ("basic_dna", "conc_dna"):
                 equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
                 noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
             else:
