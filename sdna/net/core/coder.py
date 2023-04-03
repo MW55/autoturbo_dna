@@ -107,7 +107,8 @@ class CoderMLP(CoderBase):
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
 
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
 
 
@@ -192,7 +193,8 @@ class CoderCNN(CoderBase):
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
 
 
@@ -280,192 +282,10 @@ class CoderRNN(CoderBase):
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
 
-'''
-class CoderCNN_nolat(CoderBase):
-    def __init__(self, arguments):
-        """
-        CNN based network. Used to reconstruct the code stream from the encoder after
-        applying the noisy channel.
-        :param arguments: Arguments as dictionary.
-        """
-        super(CoderCNN_nolat, self).__init__(arguments)
-
-        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
-
-        self._cnn_1 = Conv1d(self.args["coder_actf"],
-                             layers=self.args["coder_layers"],
-                             in_channels=1,
-                             out_channels=self.args["coder_units"],
-                             kernel_size=self.args["coder_kernel"])
-        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        self._cnn_2 = Conv1d(self.args["coder_actf"],
-                             layers=self.args["coder_layers"],
-                             in_channels=1,
-                             out_channels=self.args["coder_units"],
-                             kernel_size=self.args["coder_kernel"])
-        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        if self.args["rate"] == "onethird":
-            self._cnn_3 = Conv1d(self.args["coder_actf"],
-                                 layers=self.args["coder_layers"],
-                                 in_channels=1,
-                                 out_channels=self.args["coder_units"],
-                                 kernel_size=self.args["coder_kernel"])
-            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-
-    def set_parallel(self):
-        """
-        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
-        """
-        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
-        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
-        self._linear_1 = torch.nn.DataParallel(self._linear_1)
-        self._linear_2 = torch.nn.DataParallel(self._linear_2)
-        if self.args["rate"] == "onethird":
-            self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
-            self._linear_3 = torch.nn.DataParallel(self._linear_3)
-
-    def forward(self, inputs):
-        """
-        Calculates output tensors from input tensors based on the process.
-        :param inputs: Input tensor.
-        :return: Output tensor of coder.
-        """
-        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
-        x_sys = self._cnn_1(x_sys)
-        x_sys = torch.flatten(x_sys, start_dim=1)
-        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
-        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
-        x_p1 = self._cnn_2(x_p1)
-        x_p1 = torch.flatten(x_p1, start_dim=1)
-        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
-        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-        if self.args["rate"] == "onethird":
-            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
-            x_p2 = self._cnn_3(x_p2)
-            x_p2 = torch.flatten(x_p2, start_dim=1)
-            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
-            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-            x = torch.cat([x_sys, x_p1, x_p2], dim=2)
-        else:
-            x = torch.cat([x_sys, x_p1], dim=2)
-        x = Quantizer.apply(x)
-        return x
-'''
-# CNN Coder
-'''
-class CoderCNN_nolat(CoderBase):
-    def __init__(self, arguments):
-        """
-        CNN based network. Used to reconstruct the code stream from the encoder after
-        applying the noisy channel.
-        :param arguments: Arguments as dictionary.
-        """
-        super(CoderCNN_nolat, self).__init__(arguments)
-
-        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
-
-        self._cnn_1_0 = Conv1d(self.args["coder_actf"],
-                             layers=int(self.args["coder_layers"]/2),
-                             in_channels=1,
-                             out_channels=self.args["coder_units"],
-                             kernel_size=int(self.args["coder_kernel"]/2))
-
-        self._cnn_1 = Conv1d(self.args["coder_actf"],
-                             layers=int(self.args["coder_layers"]/2),
-                             in_channels=self.args["coder_units"],
-                             out_channels=self.args["coder_units"],
-                             kernel_size=self.args["coder_kernel"])
-        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
-
-        self._cnn_2_0 = Conv1d(self.args["coder_actf"],
-                             layers=int(self.args["coder_layers"]/2),
-                             in_channels=1,
-                             out_channels=self.args["coder_units"],
-                             kernel_size=int(self.args["coder_kernel"]/2))
-
-        self._cnn_2 = Conv1d(self.args["coder_actf"],
-                             layers=int(self.args["coder_layers"]/2),
-                             in_channels=self.args["coder_units"],
-                             out_channels=self.args["coder_units"],
-                             kernel_size=self.args["coder_kernel"])
-        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        #self._linear_2 = torch.nn.Linear(
-        #    self.args["coder_units"] * (self.args["block_length"]),
-        #    self.args["block_length"])
-        if self.args["rate"] == "onethird":
-            self._cnn_3_0 = Conv1d(self.args["coder_actf"],
-                                   layers=int(self.args["coder_layers"] / 2),
-                                   in_channels=1,
-                                   out_channels=self.args["coder_units"],
-                                   kernel_size=int(self.args["coder_kernel"] / 2))
-
-            self._cnn_3 = Conv1d(self.args["coder_actf"],
-                                 layers=int(self.args["coder_layers"]),
-                                 in_channels=self.args["coder_units"],
-                                 out_channels=self.args["coder_units"],
-                                 kernel_size=self.args["coder_kernel"])
-            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-            #self._linear_3 = torch.nn.Linear(
-            #    self.args["coder_units"] * (self.args["block_length"]),
-            #    self.args["block_length"])
-
-    def set_parallel(self):
-        """
-        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
-        """
-        self._cnn_1_0 = torch.nn.DataParallel(self._cnn_1_0)
-        self._cnn_2_0 = torch.nn.DataParallel(self._cnn_2_0)
-        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
-        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
-        self._linear_1 = torch.nn.DataParallel(self._linear_1)
-        self._linear_2 = torch.nn.DataParallel(self._linear_2)
-        if self.args["rate"] == "onethird":
-            self._cnn_3_0 = torch.nn.DataParallel(self._cnn_3_0)
-            self._cnn_3 = torch.nn.DataParallel(self._cnn_3)
-            self._linear_3 = torch.nn.DataParallel(self._linear_3)
-
-    def forward(self, inputs):
-        """
-        Calculates output tensors from input tensors based on the process.
-        :param inputs: Input tensor.
-        :return: Output tensor of coder.
-        """
-        x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
-        x_sys = self._cnn_1_0(x_sys)
-        x_sys = self._cnn_1(x_sys)
-        x_sys = torch.flatten(x_sys, start_dim=1)
-        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
-        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-        x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
-        x_p1 = self._cnn_2_0(x_p1)
-        x_p1 = self._cnn_2(x_p1)
-        x_p1 = torch.flatten(x_p1, start_dim=1)
-        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
-        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-        if self.args["rate"] == "onethird":
-            x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
-            x_p2 = self._cnn_3_0(x_p2)
-            x_p2 = self._cnn_3(x_p2)
-            x_p2 = torch.flatten(x_p2, start_dim=1)
-            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
-            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-            x = torch.cat([x_sys, x_p1, x_p2], dim=2)
-        else:
-            x = torch.cat([x_sys, x_p1], dim=2)
-        x = Quantizer.apply(x)
-        return x
-'''
 class CoderCNN_nolat(CoderBase):
     def __init__(self, arguments):
         """
@@ -545,8 +365,8 @@ class CoderCNN_nolat(CoderBase):
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
-        #if not self.args["continuous"]: #ToDo also turn it off if a parameter "continuous_coder" is on
-        #    x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
 
 class CoderCNN_RNN(CoderBase):
@@ -653,7 +473,8 @@ class CoderCNN_RNN(CoderBase):
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
 
 class CoderTransformer(CoderBase):
@@ -737,7 +558,8 @@ class CoderTransformer(CoderBase):
             x = torch.cat((x_sys, x_p1, x_p2), dim=2)
         else:
             x = torch.cat((x_sys, x_p1), dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
 
 class CoderCNN_conc(CoderBase):
@@ -789,7 +611,7 @@ class CoderCNN_conc(CoderBase):
         x = torch.flatten(x, start_dim=1)
         x = self.actf(self._dropout(self._linear(x)))
         x = x.reshape((inputs.size()[0], self.args["block_length"], 3))
-        if not self.args["continuous"]:
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
             x = Quantizer.apply(x)
         return x
 
@@ -932,48 +754,9 @@ class CoderIDT(CoderBase):
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
-        x = Quantizer.apply(x)
-        #x = self._idl(x, target)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
-
-'''
-class CoderIDT(torch.nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, max_edit_distance):
-        super(CoderIDT, self).__init__()
-        self.edit_cost = torch.nn.Linear(hidden_size, max_edit_distance * 2 + 1)
-        self.output = torch.nn.Linear(input_size + hidden_size, output_size)
-        self.max_edit_distance = max_edit_distance
-
-    def calc_probs(self, input, encoder_output, prev_output, prev_cost):
-        # Convert input to one-hot vector
-        input = torch.eye(2)[input.long()].unsqueeze(1)  # [batch_size, 1, input_size]
-
-        encoder_proj = self.edit_cost(encoder_output)  # [batch_size, seq_len, max_edit_distance*2+1]
-        output_proj = self.edit_cost(prev_output)  # [batch_size, 1, max_edit_distance*2+1]
-        cost = prev_cost.unsqueeze(1) + encoder_proj + output_proj  # [batch_size, seq_len, max_edit_distance*2+1]
-
-        prob = nn.functional.softmax(-cost, dim=-1)  # [batch_size, seq_len, max_edit_distance*2+1]
-
-        context = torch.bmm(prob.transpose(1, 2), encoder_output)  # [batch_size, 1, hidden_size]
-
-        output_prob = nn.functional.softmax(self.output(torch.cat([input, context], dim=-1)), dim=-1)  # [batch_size, 1, output_size]
-
-        edit_cost, _ = torch.min(cost, dim=-1)  # [batch_size, seq_len]
-        min_cost, _ = torch.min(edit_cost, dim=-1, keepdim=True)  # [batch_size, 1]
-
-        edit_dist = torch.arange(-self.max_edit_distance, self.max_edit_distance+1).unsqueeze(0).to(input.device)  # [1, max_edit_distance*2+1]
-        edit_dist = edit_dist.repeat(input.size(0), 1)  # [batch_size, max_edit_distance*2+1]
-        candidate_output = torch.cat([prev_output.repeat(1, 1, output_size), torch.zeros(input.size(0), self.max_edit_distance, output_size).to(input.device), output_prob], dim=1)  # [batch_size, seq_len+max_edit_distance, output_size]
-
-        cost_exp = torch.cat([prev_cost, torch.zeros(input.size(0), self.max_edit_distance).to(input.device) + float('inf')], dim=1)  # [batch_size, seq_len+max_edit_distance]
-        edit_dist_exp = torch.cat([torch.zeros(input.size(0), prev_output.size(1)).to(input.device), edit_dist], dim=1)  # [batch_size, seq_len+max_edit_distance]
-        edit_dist_cost = (edit_dist_exp - edit_dist) ** 2 + 1  # [batch_size, seq_len+max_edit_distance, max_edit_distance*2+1]
-
-        new_cost = torch.min(torch.cat([cost_exp.unsqueeze(-1), edit_cost.unsqueeze(-1) + edit_dist_cost], dim=-1), dim=-1)[0]  # [batch_size, seq_len+max_edit_distance]
-        new_cost[:, 0] = min_cost.squeeze()  # Set cost for first position to minimum cost over entire sequence
-
-        return output_prob,  new_cost, candidate_output
-'''
 
 class ResNetBlock(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1):
@@ -1051,7 +834,8 @@ class ResNetCoder(CoderBase):
         x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         x = torch.cat([x_sys, x_p1, x_p2], dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
 
         #x = x.view(-1, (self.args["block_length"] + self.args["block_padding"]) * 3)
         #x = self.fc(x)
@@ -1069,17 +853,11 @@ class ResNetBlock2d(torch.nn.Module):
         self.conv2 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=(3,3), padding=(1,1))
         self.bn2 = torch.nn.BatchNorm2d(out_channels)
 
-        #self.conv1 = torch.nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        #self.bn1 = torch.nn.BatchNorm2d(out_channels)
-        #self.conv2 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
-        #self.bn2 = torch.nn.BatchNorm2d(out_channels)
-
         if in_channels == out_channels:
             self.shortcut = torch.nn.Identity()
         else:
             self.shortcut = torch.nn.Conv2d(in_channels, out_channels, kernel_size=(1,1))
 
-#            self.shortcut = torch.nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
     def forward(self, x):
         shortcut = self.shortcut(x)
@@ -1096,62 +874,6 @@ class ResNetBlock2d(torch.nn.Module):
 
         return x
 
-'''
-class ResNetCoder2d(CoderBase):
-    def __init__(self, arguments, in_channels=3, out_channels=64, n_blocks=15): #ToDo use the config
-        super(ResNetCoder2d, self).__init__(arguments)
-
-        self._dropout = torch.nn.Dropout(0)
-
-        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
-        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
-        self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])  # +16
-
-        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(3,3))
-        self.bn1 = torch.nn.BatchNorm2d(out_channels)
-
-        layers = []
-        for i in range(n_blocks):
-            layers.append(ResNetBlock2d(out_channels, out_channels))
-        self.layers = torch.nn.Sequential(*layers)
-
-        self.conv2 = torch.nn.Conv2d(out_channels, in_channels, kernel_size=(7,7), padding=(4,3))
-
-    def forward(self, inputs):
-
-        x = inputs.view(256, 1, 10, 3)
-
-
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = func.relu(x, inplace=True)
-
-        x = self.layers(x)
-
-        x = self.conv2(x)
-        x = x.view(256, 10, 3)
-
-        x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
-        x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
-        x_p2 = inputs[:, :, 2].view((x.size()[0], x.size()[1], 1))
-
-        x_sys = torch.flatten(x_sys, start_dim=1)
-        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
-        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-        x_p1 = torch.flatten(x_p1, start_dim=1)
-        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
-        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-        x_p2 = torch.flatten(x_p2, start_dim=1)
-        x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
-        x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
-
-        x = torch.cat([x_sys, x_p1, x_p2], dim=2)
-        x = Quantizer.apply(x)
-
-        return x
-    '''
 class ResNetCoder2d(CoderBase):
     def __init__(self, arguments, in_channels=3, out_channels=64, n_blocks=15):
         super(ResNetCoder2d, self).__init__(arguments)
@@ -1165,7 +887,6 @@ class ResNetCoder2d(CoderBase):
         self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])
 
-        #self.conv1 = torch.nn.Conv2d(in_channels=3, out_channels=64, kernel_size=(3, 1))
         self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=64, kernel_size=3, stride=1, padding=1)
         self.bn1 = torch.nn.BatchNorm2d(out_channels)
 
@@ -1174,7 +895,6 @@ class ResNetCoder2d(CoderBase):
             layers.append(ResNetBlock2d(out_channels, out_channels))
         self.layers = torch.nn.Sequential(*layers)
 
-        #self.conv2 = torch.nn.Conv2d(out_channels, in_channels, kernel_size=(7, 7), padding=(4, 3))
         self.conv2 = torch.nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)
 
     def set_interleaver_order(self, array):
@@ -1197,8 +917,6 @@ class ResNetCoder2d(CoderBase):
 
         x_inp = torch.cat([x_sys, x_p1, x_p2_deinter], dim=2)
 
-
-        #x = inputs.permute(0, 2, 1).unsqueeze(3) #.unsqueeze(1)  # reshape to (batch_size, channels, seq_len, 1)
         x = x_inp.view(x_inp.size()[0], 1, x_inp.size()[1], x_inp.size()[2])
         x = self.conv1(x)
         x = self.bn1(x)
@@ -1208,8 +926,6 @@ class ResNetCoder2d(CoderBase):
 
         x = self.conv2(x)
         x = x.squeeze(1)
-        #x = x.permute(0, 2, 1, 3).squeeze(-1)  # reshape back to (batch_size, seq_len, channels)
-
         x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
         x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
         x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
@@ -1231,7 +947,8 @@ class ResNetCoder2d(CoderBase):
         x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         x = torch.cat([x_sys, x_p1, x_p2], dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
 
         return x
 
@@ -1273,7 +990,6 @@ class ResNetCoder2d_1d(CoderBase):
         self.deinterleaver.set_order(array)
 
     def forward(self, inputs):
-
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
@@ -1290,7 +1006,6 @@ class ResNetCoder2d_1d(CoderBase):
         x = self.conv2_2d(x)
         x = x.squeeze(1)
 
-        #x_p2 = x_p2.view((x_p2.size()[0], 1, x_p2.size()[1]))
         x_p2 = x_p2.permute(0, 2, 1)
         x_p2 = self.conv1_1d(x_p2)
         x_p2 = self.bn1_1d(x_p2)
@@ -1304,8 +1019,6 @@ class ResNetCoder2d_1d(CoderBase):
         x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
         x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
         x_p2 = x_p2.permute(0, 2, 1)
-        #x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
-
 
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
@@ -1320,7 +1033,8 @@ class ResNetCoder2d_1d(CoderBase):
         x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
 
         x = torch.cat([x_sys, x_p1, x_p2], dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
 
         return x
 
@@ -1349,15 +1063,11 @@ class ResNetCoder_sep(CoderBase):
         x = self.layers(x)
         x = self.conv2(x)
 
-
         x = torch.flatten(x, start_dim=1)
         x = self.actf(self._dropout(self._linear_1(x)))
         x = x.reshape((inputs.size()[0], self.args["block_length"], 1))
-        x = Quantizer.apply(x)
-
-        #x = x.view(-1, (self.args["block_length"] + self.args["block_padding"]) * 3)
-        #x = self.fc(x)
-        #x = x.view(-1, self.args["block_length"], 3)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
 
         return x
 
@@ -1368,15 +1078,7 @@ class ResNetCoder_conc(CoderBase):
         self._dropout = torch.nn.Dropout(0)
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
-        '''
-        self._cnn1 = Conv1d(self.args["coder_actf"],
-                           layers=self.args["coder_layers"],
-                           in_channels=1,
-                           out_channels=self.args["coder_units"],
-                           kernel_size=3) #self.args["coder_kernel"]
-        
-        self._linear = torch.nn.Linear(self.args["coder_units"] * 3 * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]*3)
-        '''
+
         self._linear = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"])*3, self.args["block_length"]*3)
 
 
@@ -1398,8 +1100,6 @@ class ResNetCoder_conc(CoderBase):
         self._cnn2 = torch.nn.Conv1d(out_channels, in_channels, kernel_size=29, padding=14)
 
     def forward(self, inputs):
-        #x = inputs.transpose(1, 2).reshape(self.args["batch_size"], -1, 1)
-
         x = inputs.transpose(1, 2).reshape(self.args["batch_size"], -1, 1).transpose(1, 2)
 
         x = self._cnn1(x)
@@ -1414,11 +1114,8 @@ class ResNetCoder_conc(CoderBase):
         x = self.actf(self._dropout(self._linear(x)))
         x = x.reshape((inputs.size()[0], self.args["block_length"], 3))
 
-        x = Quantizer.apply(x)
-
-        #x = x.view(-1, (self.args["block_length"] + self.args["block_padding"]) * 3)
-        #x = self.fc(x)
-        #x = x.view(-1, self.args["block_length"], 3)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
 
         return x
 
@@ -1428,9 +1125,6 @@ class CNN_sep(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        #self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
-
-        #self.conv1 = torch.nn.Conv1d(in_channels, out_channels, kernel_size=5, padding=2) #3,1
         self._cnn_1 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
@@ -1438,26 +1132,15 @@ class CNN_sep(CoderBase):
                              kernel_size=self.args["coder_kernel"])
         self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
 
-        #self.bn1 = torch.nn.BatchNorm1d(out_channels)
-
-        #self.conv2 = torch.nn.Conv1d(out_channels, in_channels, kernel_size=5, padding=2) #3,1
 
     def forward(self, inputs):
-        #x = self.conv1(inputs)
-        #x = self.bn1(x)
-        #x = func.relu(x, inplace=True)
-        #x = self.layers(x)
-        #x = self.conv2(x)
 
         x = self._cnn_1(inputs)
         x = torch.flatten(x, start_dim=1)
         x = self.actf(self._dropout(self._linear_1(x)))
         x = x.reshape((inputs.size()[0], self.args["block_length"], 1))
-        x = Quantizer.apply(x)
-
-        #x = x.view(-1, (self.args["block_length"] + self.args["block_padding"]) * 3)
-        #x = self.fc(x)
-        #x = x.view(-1, self.args["block_length"], 3)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
 
         return x
 
@@ -1477,7 +1160,6 @@ class CoderCNN_3linears(CoderBase):
                              in_channels=1,
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
-        #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         self._linear_1_1 = torch.nn.Linear(
             self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
             self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]))
@@ -1485,13 +1167,11 @@ class CoderCNN_3linears(CoderBase):
         self._linear_1_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         self._linear_1_3 = torch.nn.Linear(self.args["block_length"], self.args["block_length"])
 
-        #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
-        #self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
 
         self._linear_2_1 = torch.nn.Linear(
             self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
@@ -1500,16 +1180,12 @@ class CoderCNN_3linears(CoderBase):
         self._linear_2_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
         self._linear_2_3 = torch.nn.Linear(self.args["block_length"], self.args["block_length"])
 
-        #self._linear_2 = torch.nn.Linear(
-        #    self.args["coder_units"] * (self.args["block_length"]),
-        #    self.args["block_length"])
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
                                  out_channels=self.args["coder_units"],
                                  kernel_size=self.args["coder_kernel"])
-            #self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
 
             self._linear_3_1 = torch.nn.Linear(
                 self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
@@ -1520,9 +1196,6 @@ class CoderCNN_3linears(CoderBase):
                 self.args["block_length"])
             self._linear_3_3 = torch.nn.Linear(self.args["block_length"], self.args["block_length"])
 
-            #self._linear_3 = torch.nn.Linear(
-            #    self.args["coder_units"] * (self.args["block_length"]),
-            #    self.args["block_length"])
 
     def set_parallel(self):
         """
@@ -1545,7 +1218,6 @@ class CoderCNN_3linears(CoderBase):
         x_sys = inputs[:, :, 0].view((inputs.size()[0], inputs.size()[1], 1))
         x_sys = self._cnn_1(x_sys)
         x_sys = torch.flatten(x_sys, start_dim=1)
-        #x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
         x_sys = self.actf(self._dropout(self._linear_1_1(x_sys)))
         x_sys = self.actf(self._dropout(self._linear_1_2(x_sys)))
         x_sys = self.actf(self._dropout(self._linear_1_3(x_sys)))
@@ -1554,7 +1226,6 @@ class CoderCNN_3linears(CoderBase):
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         x_p1 = self._cnn_2(x_p1)
         x_p1 = torch.flatten(x_p1, start_dim=1)
-        #x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
         x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
         x_p1 = self.actf(self._dropout(self._linear_2_2(x_p1)))
         x_p1 = self.actf(self._dropout(self._linear_2_3(x_p1)))
@@ -1564,7 +1235,6 @@ class CoderCNN_3linears(CoderBase):
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
             x_p2 = self._cnn_3(x_p2)
             x_p2 = torch.flatten(x_p2, start_dim=1)
-            #x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
             x_p2 = self.actf(self._dropout(self._linear_3_1(x_p2)))
             x_p2 = self.actf(self._dropout(self._linear_3_2(x_p2)))
             x_p2 = self.actf(self._dropout(self._linear_3_3(x_p2)))
@@ -1573,6 +1243,7 @@ class CoderCNN_3linears(CoderBase):
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
             x = torch.cat([x_sys, x_p1], dim=2)
-        x = Quantizer.apply(x)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
         return x
 

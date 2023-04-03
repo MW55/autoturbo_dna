@@ -431,6 +431,10 @@ class SDNAArgs:
                                        metavar='CHOICE',
                                        dest='channel'
                                        )
+        self.net_training.add_argument("--continuous_coder",
+                                       help="toggles that the intermediate decoder (coder) passes continuous values to the decoder.",
+                                       action="store_true",
+                                       dest="continuous_coder")
 
     def _dna_error_simulation(self):
         """
