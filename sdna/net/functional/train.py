@@ -201,7 +201,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
             else:
                 s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch, validate=True)
             #print("validate")
-            if not args["continuous"]:
+            if not args["channel"] == "continuous":
                 stability += (1.0 - model.channel.evaluate(s_enc.detach()))
 
             if mode == "all" or mode == "encoder" or mode == "decoder":
@@ -219,7 +219,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                     print("single accuracy: " + str(single_acc))
                 accuracy += torch.sum(s_enc.eq(c_dec.detach())).item()
 
-            if not args["continuous"] and not args["channel"] in ("basic_dna", "conc_dna"):
+            if not args["channel"] in ("basic_dna", "conc_dna", "continuous"):
                 equal = torch.sum(s_enc.detach().eq(noisy.detach()[:s_enc.size()[0], :s_enc.size()[1], :s_enc.size()[2]]))
                 noise += (s_enc.size()[0] * s_enc.size()[1] * s_enc.size()[2]) - equal.item()
             else:

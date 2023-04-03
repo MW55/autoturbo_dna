@@ -419,10 +419,6 @@ class SDNAArgs:
                                        help="If the coder should be split into 3 seperate instances during training.",
                                        action='store_true',
                                        dest='separate_coder_training')
-        self.net_training.add_argument("--continuous",
-                                       help="train the encoder without binarization.",
-                                       action="store_true",
-                                       dest="continuous")
         self.net_training.add_argument("--all-errors",
                                        help="train each part of the model always with all error types.",
                                        action="store_true",

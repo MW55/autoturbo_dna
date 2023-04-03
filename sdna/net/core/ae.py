@@ -53,12 +53,12 @@ class AutoEncoder(torch.nn.Module):
         else:
             x = self.enc(inputs)        # stream encoder => in (0, +1) | out (-1, +1)
         s_enc = x.clone()
-        if not self.args["continuous"]:
+        if not self.args["channel"] == "continuous":
             noise = self.channel.generate_noise(x, padding, seed, validate, self.args["channel"])
             noise = noise.cuda() if self.args["gpu"] else noise
 
         if padding <= 0:
-            if self.args["continuous"] or self.args["channel"] in ('basic_dna', 'conc_dna'):
+            if self.args["channel"] in ('basic_dna', 'conc_dna', "continuous"):
                 x = self.channel.generate_noise(x, 0, seed, validate, self.args["channel"])
             else:
                 x *= noise                # noisy channel => in (-1, +1) | out (-1, +1)
@@ -67,7 +67,7 @@ class AutoEncoder(torch.nn.Module):
                 s_dec = self.dec(x, hidden, s_enc)
             elif self.args["decoder"] == "transformer":
                 #bin_mask = torch.ones((s_enc.size()[0], s_enc.size()[1], s_enc.size()[2]), dtype=torch.bool)
-                s_dec = self.dec(x, s_enc)#s_enc
+                s_dec = self.dec(x, s_enc)
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
@@ -94,10 +94,6 @@ class AutoEncoder(torch.nn.Module):
                 x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
                 x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
                 x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
-
-                #print("sys: " + str(torch.any(x_sys == 0)))
-                #print("p1: " + str(torch.any(x_p1 == 0)))
-                #print("p2: " + str(torch.any(x_p2 == 0)))
                 x_sys_c = self.coder(x_sys)
                 x_p1_c = self.coder2(x_p1)
                 x_p2_c = self.coder3(x_p2)
