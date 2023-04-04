@@ -72,7 +72,7 @@ class AutoEncoder(torch.nn.Module):
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
             x = pad_data(x, padding)
-            if self.args["continuous"] or self.args["channel"] in ("basic_dna", "conc_dna"):
+            if self.args["channel"] in ("basic_dna", "conc_dna", "continuous"):
                 x = self.channel.generate_noise(x, padding, seed, validate, self.args["channel"])
             else:
                 x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)

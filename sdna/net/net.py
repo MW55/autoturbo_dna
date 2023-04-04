@@ -127,7 +127,7 @@ class Net(object):
             #    indel_mult -= 1
             #    self.model.channel._dna_simulator.indel_multiplier = indel_mult
              #
-            if epoch < 1000: #Todo: warmup steps, should be defined in the config
+            if epoch < 10: #Todo: warmup steps, should be defined in the config
                 warmup = True
             else:
                 warmup = False
