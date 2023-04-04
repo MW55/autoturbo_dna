@@ -20,7 +20,6 @@ ENCODERS = {
     "cnn_nolat": EncoderCNN_nolat,
     "vae": Encoder_vae,
     "vae_lat": Encoder_vae_lat,
-    "gnn": EncoderGNN,
     "cnn_kernel_inc": EncoderCNN_kernel_increase,
     "resnet1d": EncoderResNet1d
 }
