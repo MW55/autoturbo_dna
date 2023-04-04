@@ -256,15 +256,18 @@ def get_correct_coder(s_enc, c_dec, args):
     x_sys_enc = x_sys_enc.detach().flatten(start_dim=1).tolist()
     x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
     x_p1_enc = x_p1_enc.detach().flatten(start_dim=1).tolist()
-    x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
-    x_p2_enc = x_p2_enc.detach().flatten(start_dim=1).tolist()
+
 
     x_sys_dec = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
     x_sys_dec = x_sys_dec.detach().flatten(start_dim=1).tolist()
     x_p1_dec = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
     x_p1_dec = x_p1_dec.detach().flatten(start_dim=1).tolist()
-    x_p2_dec = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
-    x_p2_dec = x_p2_dec.detach().flatten(start_dim=1).tolist()
+
+    if args["rate"] == "onethird":
+        x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
+        x_p2_enc = x_p2_enc.detach().flatten(start_dim=1).tolist()
+        x_p2_dec = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
+        x_p2_dec = x_p2_dec.detach().flatten(start_dim=1).tolist()
 
     x_sys_corr = 0
     x_p1_corr = 0
@@ -278,8 +281,9 @@ def get_correct_coder(s_enc, c_dec, args):
             x_sys_corr += 1
         if x_p1_enc[i] == x_p1_dec[i]:
             x_p1_corr += 1
-        if x_p2_enc[i] == x_p2_dec[i]:
-            x_p2_corr += 1
+        if args["rate"] == "onethird":
+            if x_p2_enc[i] == x_p2_dec[i]:
+                x_p2_corr += 1
     full_corr_x_sys += x_sys_corr / args["batch_size"]
     full_corr_x_p1 += x_p1_corr / args["batch_size"]
     full_corr_x_p2 += x_p2_corr / args["batch_size"]
