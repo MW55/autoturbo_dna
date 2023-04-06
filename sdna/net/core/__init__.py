@@ -20,7 +20,8 @@ ENCODERS = {
     "cnn_nolat": EncoderCNN_nolat,
     "vae": Encoder_vae,
     "vae_lat": Encoder_vae_lat,
-    "gnn": EncoderGNN
+    "cnn_kernel_inc": EncoderCNN_kernel_increase,
+    "resnet1d": EncoderResNet1d
 }
 
 DECODERS = {
@@ -29,7 +30,9 @@ DECODERS = {
     "rnnatt": DecoderRNNatt,
     "transformer": DecoderTransformer,
     "cnn_nolat": DecoderCNN_nolat,
-    "entransformer": DecoderEnTransformer
+    "entransformer": DecoderEnTransformer,
+    "ensemble_dec": EnsembleDecoder,
+    "resnet1d": DecoderResNet1d
 }
 
 CODERS = {
@@ -39,7 +42,16 @@ CODERS = {
     "transformer": CoderTransformer,
     "cnn_nolat": CoderCNN_nolat,
     "cnn_rnn": CoderCNN_RNN,
-    "cnn_conc": CoderCNN_conc
+    "cnn_conc": CoderCNN_conc,
+    "cnn_ensemble": EnsembleCNN,
+    "idt": CoderIDT,
+    "resnet": ResNetCoder,
+    "resnet2d": ResNetCoder2d,
+    "resnet2d_1d": ResNetCoder2d_1d,
+    "resnet_sep": ResNetCoder_sep,
+    "resnet_conc": ResNetCoder_conc,
+    "cnn_sep": CNN_sep,
+    "resnet_lat": ResNetCoder_lat
 }
 
 __all__ = ['AutoEncoder',

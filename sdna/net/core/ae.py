@@ -3,10 +3,11 @@
 import torch
 import torch.nn.functional as func
 import numpy as np
+#from sdna.net.functional.train import get_same_packages
 
 
 class AutoEncoder(torch.nn.Module):
-    def __init__(self, arguments, enc, dec, coder, channel):
+    def __init__(self, arguments, enc, dec, coder, channel, coder2=None, coder3=None):
         """
         Autoencoder combines the encoder, decoder as well as the coder and applies the 'noisy' channel. The combination of
         all three networks maps the model.
@@ -23,6 +24,8 @@ class AutoEncoder(torch.nn.Module):
         self.dec = dec
         self.coder = coder
         self.channel = channel
+        self.coder2 = coder2
+        self.coder3 = coder3
 
     def forward(self, inputs, padding=0, seed=0, hidden=None, validate=False):
         """
@@ -39,30 +42,64 @@ class AutoEncoder(torch.nn.Module):
         ao_enc = np.random.mtrand.RandomState(seed).permutation(np.arange(inputs.size()[1]))
         self.enc.set_interleaver_order(ao_enc)
         self.dec.set_interleaver_order(ao_enc)
+        if self.args["coder"] == "resnet2d":
+            self.coder.set_interleaver_order(ao_enc)
+        if self.args["decoder"] == 'ensemble_dec':
+            for model in self.dec.models:
+                model.set_interleaver_order(ao_enc)
 
         if self.args["encoder"] == "rnnatt":
             x, hidden = self.enc(inputs, hidden)
         else:
             x = self.enc(inputs)        # stream encoder => in (0, +1) | out (-1, +1)
         s_enc = x.clone()
-        noise = self.channel.generate_noise(x, padding, seed)
-        noise = noise.cuda() if self.args["gpu"] else noise
+        if not self.args["channel"] == "continuous":
+            noise = self.channel.generate_noise(x, padding, seed, validate, self.args["channel"])
+            noise = noise.cuda() if self.args["gpu"] else noise
 
         if padding <= 0:
-            x *= noise                # noisy channel => in (-1, +1) | out (-1, +1)
+            if self.args["channel"] in ('basic_dna', 'conc_dna', "continuous"):
+                x = self.channel.generate_noise(x, 0, seed, validate, self.args["channel"])
+            else:
+                x *= noise                # noisy channel => in (-1, +1) | out (-1, +1)
             c_dec = []
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(x, hidden, s_enc)
             elif self.args["decoder"] == "transformer":
                 #bin_mask = torch.ones((s_enc.size()[0], s_enc.size()[1], s_enc.size()[2]), dtype=torch.bool)
-                s_dec = self.dec(x, s_enc)#s_enc
+                s_dec = self.dec(x, s_enc)
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
-            x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
-            x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
+            x = self.pad_data(x, padding)
+            if self.args["channel"] in ("basic_dna", "conc_dna", "continuous"):
+                x = self.channel.generate_noise(x, padding, seed, validate, self.args["channel"])
+            else:
+                x *= noise                  # noisy channel => in (-1, +1) | out (-1, 0, +1)
+
             #x += noise                # some noise must be additive applied (only for testing)
-            c_dec = self.coder(x)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
+
+            '''
+            print("sys:")
+            get_same_packages(x[:, :, 0].view((x.size()[0], x.size()[1], 1)),
+                              s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1)), 2, 0)
+            print("p1:")
+            get_same_packages(x[:, :, 1].view((x.size()[0], x.size()[1], 1)),
+                              s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1)), 2, 0)
+            '''
+            if self.args["coder"] == 'idt':
+                padded_enc = self.pad_data(s_enc, padding)
+                c_dec = self.coder(x, padded_enc)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
+            elif self.coder2 and self.coder3:
+                x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
+                x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
+                x_p2 = x[:, :, 2].view((x.size()[0], x.size()[1], 1))
+                x_sys_c = self.coder(x_sys)
+                x_p1_c = self.coder2(x_p1)
+                x_p2_c = self.coder3(x_p2)
+                c_dec = torch.cat([x_sys_c, x_p1_c, x_p2_c], dim=2)
+            else:
+                c_dec = self.coder(x)
             if self.args["decoder"] == "rnnatt":
                 s_dec = self.dec(c_dec, hidden, s_enc)
             elif self.args["decoder"] == "transformer":
@@ -73,3 +110,15 @@ class AutoEncoder(torch.nn.Module):
             else:
                 s_dec = self.dec(c_dec)  # stream decoder => in (-1, +1) | out (0, +1)
         return s_dec, s_enc, c_dec, x
+
+    def pad_data(self, x, padding):
+        # x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
+        # x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
+        # x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
+        if self.args['pad_style'] == 'constant':
+            x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
+        else:
+            x = x.permute(0, 2, 1)
+            x = func.pad(x, (0, padding), mode='circular')
+            x = x.permute(0, 2, 1)
+        return x

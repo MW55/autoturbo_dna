@@ -150,7 +150,7 @@ class SDNAArgs:
                                         dest='block_padding')
         self.net_structure.add_argument('--encoder',
                                         help='Choose which encoder to use: RNN, SRNN, CNN, SCNN or RNNatt. (default=CNN)',
-                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt', 'transformer', 'cnn_nolat', 'vae', 'vae_lat', 'gnn'],
+                                        choices=['rnn', 'srnn', 'cnn', 'scnn', 'rnnatt', 'transformer', 'cnn_nolat', 'vae', 'vae_lat', 'cnn_kernel_inc', 'resnet1d'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -201,7 +201,7 @@ class SDNAArgs:
                                         dest='beta')
         self.net_structure.add_argument('--decoder',
                                         help='Choose which decoder to use: RNN or CNN. (default=CNN)',
-                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat', 'entransformer'],
+                                        choices=['rnn', 'cnn', 'rnnatt', 'transformer', 'cnn_nolat', 'entransformer', 'ensemble_dec', 'resnet1d'],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -262,7 +262,7 @@ class SDNAArgs:
                                         dest='extrinsic')
         self.net_structure.add_argument('--coder',
                                         help='Choose which coder to use: MLP, CNN or RNN. (default=CNN)',
-                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn', 'cnn_conc'],
+                                        choices=['mlp', 'cnn', 'rnn', 'transformer', 'cnn_nolat', 'cnn_rnn', 'cnn_conc', 'cnn_ensemble', "idt", "resnet", "resnet2d", "resnet2d_1d", "resnet_ens", "resnet_sep","resnet_conc", "cnn_sep", "resnet_lat"],
                                         type=str.lower,
                                         default='cnn',
                                         metavar='CHOICE',
@@ -319,6 +319,19 @@ class SDNAArgs:
                                         default=0,
                                         metavar='X',
                                         dest='redundancy')
+        self.net_structure.add_argument('--ens-models',
+                                        help='If ensemble coders are used, defines the number of coder instances in the ensemble.',
+                                        type=int,
+                                        default=3,
+                                        metavar='X',
+                                        dest='n_models')
+        self.net_structure.add_argument('--padding-style',
+                                        help='If padding should be constant values or a circular copy of the input.',
+                                        default='constant',
+                                        choices=['constant', 'circular'],
+                                        metavar='CHOICE',
+                                        dest='pad_style')
+
     def _net_training(self):
         """
         Function to generate the arguments for 'NN training parameters'.
@@ -408,6 +421,30 @@ class SDNAArgs:
                                        default=False,
                                        metavar='X',
                                        dest='batch_norm')
+        self.net_training.add_argument('--separate-coder-training',
+                                       help="If the coder should be split into 3 seperate instances during training.",
+                                       action='store_true',
+                                       dest='separate_coder_training')
+        self.net_training.add_argument("--all-errors",
+                                       help="train each part of the model always with all error types.",
+                                       action="store_true",
+                                       dest='all_errors')
+        self.net_training.add_argument("--channel",
+                                       help="which channel model should be used for training",
+                                       choices=['awgn', 'bec', 'dna', 'continuous', 'basic_dna', 'conc_dna'],
+                                       type=str.lower,
+                                       default='dna',
+                                       metavar='CHOICE',
+                                       dest='channel'
+                                       )
+        self.net_training.add_argument("--continuous_coder",
+                                       help="toggles that the intermediate decoder (coder) passes continuous values to the decoder.",
+                                       action="store_true",
+                                       dest="continuous_coder")
+        self.net_training.add_argument("--constraint-training",
+                                       help="If the code should also be trained to adhere to constraints.",
+                                       action="store_true",
+                                       dest="constraint_training")
 
     def _dna_error_simulation(self):
         """

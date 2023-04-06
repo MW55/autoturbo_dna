@@ -23,16 +23,27 @@ class Net(object):
 
         :param load: Whether to load the model from a previous run.
         """
-        self.model = AutoEncoder(self.args,
-                                 ENCODERS[self.args["encoder"]](self.args),
-                                 DECODERS[self.args["decoder"]](self.args),
-                                 CODERS[self.args["coder"]](self.args),
-                                 Channel(self.args))
+        if not self.args['separate_coder_training']:
+            self.model = AutoEncoder(self.args,
+                                     ENCODERS[self.args["encoder"]](self.args),
+                                     DECODERS[self.args["decoder"]](self.args),
+                                     CODERS[self.args["coder"]](self.args),
+                                     Channel(self.args))
+        else:
+            self.model = AutoEncoder(self.args,
+                                     ENCODERS[self.args["encoder"]](self.args),
+                                     DECODERS[self.args["decoder"]](self.args),
+                                     CODERS[self.args["coder"]](self.args),
+                                     Channel(self.args),
+                                     CODERS[self.args["coder"]](self.args),
+                                     CODERS[self.args["coder"]](self.args))
 
         if torch.cuda.device_count() > 1 and self.args["gpu"] and self.args["parallel"]:
             self.model.enc.set_parallel()
             self.model.dec.set_parallel()
             self.model.coder.set_parallel()
+            self.model.coder2.set_parallel()
+            self.model.coder3.set_parallel()
 
         if not load:
             wf = func.initialize(method=self.args["init_weights"])
@@ -61,9 +72,16 @@ class Net(object):
                        list(self.model.enc.parameters()) + list(self.model.dec.parameters())), lr=self.args["enc_lr"])
             enc_optimizer = None
             dec_optimizer = None
-
-        coder_optimizer = Net.optimizers(self.args["coder_optimizer"])(
+        if not self.args["separate_coder_training"]:
+            coder_optimizer = Net.optimizers(self.args["coder_optimizer"])(
             filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"])
+        else:
+            coder_optimizer = Net.optimizers(self.args["coder_optimizer"])(
+            filter(lambda p: p.requires_grad, self.model.coder.parameters()), lr=self.args["coder_lr"]) #lr=self.args["coder_lr"]
+            coder_optimizer2 = Net.optimizers(self.args["coder_optimizer"])(
+            filter(lambda p: p.requires_grad, self.model.coder2.parameters()), lr=self.args["coder_lr"]) #lr=self.args["coder_lr"]
+            coder_optimizer3 = Net.optimizers(self.args["coder_optimizer"])(
+            filter(lambda p: p.requires_grad, self.model.coder3.parameters()), lr=self.args["coder_lr"]) #lr=self.args["coder_lr"]
         if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":
             self.scheduler_lr_dec = torch.optim.lr_scheduler.ExponentialLR(dec_optimizer, gamma=0.9)
             self.scheduler_dec = create_lr_scheduler_with_warmup(self.scheduler_lr_dec,
@@ -76,7 +94,10 @@ class Net(object):
                                                         warmup_start_value=0.0,
                                                         warmup_end_value=0.1,
                                                         warmup_duration=10)
-        return ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer
+        if not self.args["separate_coder_training"]:
+            return ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer
+        else:
+            return ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3
 
     def train(self):
         """
@@ -84,35 +105,63 @@ class Net(object):
 
         :returns: The results of the runs are returned as a generator.
         """
-        ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer = self._initialize_optimizers()
+        if not self.args['separate_coder_training']:
+            ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer = self._initialize_optimizers()
+        else:
+            ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3 = self._initialize_optimizers()
         mult = self.args["amplifier"]
         last_10_sdec_loss = []
+        indel_mult = 1
+        self.model.channel._dna_simulator.indel_multiplier = indel_mult
         for epoch in range(1, self.args["epochs"] + 1):
             ##testing###
             if epoch == 1:
-            #if epoch % 10 == 0 and mult >= 1:
+            #if epoch % 100 == 0 and mult >= 1:
             #    mult -= 1
             #    self.model.channel._dna_simulator._prepare_error_simulation(mult)
                  print("Error rate: " + str(sum([self.model.channel._dna_simulator.error_rates[i]["err_rate"]["raw_rate"]
                                                 for i in range(len(self.model.channel._dna_simulator.error_rates))])))
             res = dict()
+            #
+            #if epoch % 10 == 0 and indel_mult > 1:
+            #    indel_mult -= 1
+            #    self.model.channel._dna_simulator.indel_multiplier = indel_mult
+             #
+            if epoch < 10: #Todo: warmup steps, should be defined in the config
+                warmup = True
+            else:
+                warmup = False
             if self.args[
                 "simultaneously_training"]:  # train modules of model simultaneously or separately from each other
                 for i in range(self.args["enc_steps"]):
                     res["Encoder"] = res["S-Decoder"] = func.train(self.model, ae_optimizer, self.args, epoch=epoch,
-                                                                   mode="encoder")
+                                                                   mode="encoder", warmup = warmup)
                 for i in range(self.args["coder_steps"]):
-                    res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
+                    res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder", warmup = warmup)
                 res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
             else:
                 for i in range(self.args["enc_steps"]):
-                    res["Encoder"] = func.train(self.model, enc_optimizer, self.args, epoch=epoch, mode="encoder")
+                    res["Encoder"] = func.train(self.model, enc_optimizer, self.args, epoch=epoch, mode="encoder", warmup = warmup)
                 for i in range(self.args["dec_steps"]):
-                    res["S-Decoder"] = func.train(self.model, dec_optimizer, self.args, epoch=epoch, mode="decoder")
+                    res["S-Decoder"] = func.train(self.model, dec_optimizer, self.args, epoch=epoch, mode="decoder", warmup = warmup)
+
                 for i in range(self.args["coder_steps"]):
-                    res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder")
-                res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
+                    if not self.args['separate_coder_training']:
+                        res["I-Decoder"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch, mode="coder", warmup = warmup)
+                    else:
+                        res["I-Decoder1"] = func.train(self.model, coder_optimizer, self.args, epoch=epoch,
+                                                       mode="coder1", warmup = warmup)
+                        res["I-Decoder2"] = func.train(self.model, coder_optimizer2, self.args, epoch=epoch,
+                                                       mode="coder2", warmup = warmup)
+                        res["I-Decoder3"] = func.train(self.model, coder_optimizer3, self.args, epoch=epoch,
+                                                       mode="coder3", warmup = warmup)
+                all_optimizers = [enc_optimizer, dec_optimizer,
+                                  coder_optimizer] if not self.args['separate_coder_training'] else [enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3]
+                for i in range(20): #combined_steps
+                    res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined", warmup = warmup)
+
+                res["Accuracy"], res["Stability"], res["Noise"], res["CorrectBlocks"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
             #if not self.args["batch_size"] >= 256:
             #    last_10_sdec_loss.append(res["S-Decoder"])
@@ -121,6 +170,11 @@ class Net(object):
             #            self.args["batch_size"] = self.args["batch_size"]*2
             #            print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
             #        del last_10_sdec_loss[0]
+
+            if epoch % 1000 == 0 and not self.args["batch_size"] >= 1024:
+                self.args["batch_size"] = self.args["batch_size"]*2
+                print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
+
 
             Net._save_model(self.args["working_dir"], self.model)
             if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":
