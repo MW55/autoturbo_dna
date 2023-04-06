@@ -852,10 +852,10 @@ class ResNetCoder_lat(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]) #+16
-        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]) #+16
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
+        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
         if self.args["rate"] == "onethird":
-            self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]),self.args["block_length"])  # +16
+            self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]),self.args["block_length"]+int(self.args["redundancy"]))  # +16
 
         self._cnn_1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]), self.args["coder_units"], kernel_size=3, padding=1)
         self._bn_1 = torch.nn.BatchNorm1d(self.args["coder_units"])
