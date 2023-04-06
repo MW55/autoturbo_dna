@@ -892,18 +892,18 @@ class ResNetCoder_lat(CoderBase):
 
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
-        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+self.args["redundancy"], 1))
 
         x_p1 = torch.flatten(x_p1, start_dim=1)
         x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
-        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"]+self.args["redundancy"], 1))
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((x.size()[0], x.size()[1], 1))
 
             x_p2 = torch.flatten(x_p2, start_dim=1)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
-            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+self.args["redundancy"], 1))
 
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
