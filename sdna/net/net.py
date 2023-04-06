@@ -161,7 +161,7 @@ class Net(object):
                 for i in range(20): #combined_steps
                     res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined", warmup = warmup)
 
-                res["Accuracy"], res["Stability"], res["Noise"] = func.validate(self.model, self.args, epoch=epoch,
+                res["Accuracy"], res["Stability"], res["Noise"], res["CorrectBlocks"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
             #if not self.args["batch_size"] >= 256:
             #    last_10_sdec_loss.append(res["S-Decoder"])

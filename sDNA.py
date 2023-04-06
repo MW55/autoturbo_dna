@@ -325,6 +325,12 @@ class SDNAArgs:
                                         default=3,
                                         metavar='X',
                                         dest='n_models')
+        self.net_structure.add_argument('--padding-style',
+                                        help='If padding should be constant values or a circular copy of the input.',
+                                        default='constant',
+                                        choices=['constant', 'circular'],
+                                        metavar='CHOICE',
+                                        dest='pad_style')
 
     def _net_training(self):
         """
@@ -435,6 +441,10 @@ class SDNAArgs:
                                        help="toggles that the intermediate decoder (coder) passes continuous values to the decoder.",
                                        action="store_true",
                                        dest="continuous_coder")
+        self.net_training.add_argument("--constraint-training",
+                                       help="If the code should also be trained to adhere to constraints.",
+                                       action="store_true",
+                                       dest="constraint_training")
 
     def _dna_error_simulation(self):
         """

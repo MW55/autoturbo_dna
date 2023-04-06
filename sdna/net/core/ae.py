@@ -71,7 +71,7 @@ class AutoEncoder(torch.nn.Module):
             else:
                 s_dec = self.dec(x)       # stream decoder => in (-1, +1) | out (0, +1)
         else:
-            x = pad_data(x, padding)
+            x = self.pad_data(x, padding)
             if self.args["channel"] in ("basic_dna", "conc_dna", "continuous"):
                 x = self.channel.generate_noise(x, padding, seed, validate, self.args["channel"])
             else:
@@ -88,7 +88,7 @@ class AutoEncoder(torch.nn.Module):
                               s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1)), 2, 0)
             '''
             if self.args["coder"] == 'idt':
-                padded_enc = pad_data(s_enc, padding)
+                padded_enc = self.pad_data(s_enc, padding)
                 c_dec = self.coder(x, padded_enc)       # channel decoder => in (-1, 0, +1) | out (-1, +1)
             elif self.coder2 and self.coder3:
                 x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
@@ -111,12 +111,14 @@ class AutoEncoder(torch.nn.Module):
                 s_dec = self.dec(c_dec)  # stream decoder => in (-1, +1) | out (0, +1)
         return s_dec, s_enc, c_dec, x
 
-def pad_data(x, padding):
-    # x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
-    # x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
-    # x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
-    x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
-    #x = x.permute(0, 2, 1)
-    #x = func.pad(x, (0, padding), mode='circular')
-    #x = x.permute(0, 2, 1)
-    return x
+    def pad_data(self, x, padding):
+        # x = func.pad(input=x, pad=(0, 0, int(padding/2), int(padding/2)), mode="constant", value=1.0)
+        # x = func.pad(x, (0, 0, int(padding / 2), int(padding / 2)), mode='circular')
+        # x = func.pad(x, (int(padding/2), int(padding/2)), mode='circular')
+        if self.args['pad_style'] == 'constant':
+            x = func.pad(input=x, pad=(0, 0, 0, padding), mode="constant", value=1.0)
+        else:
+            x = x.permute(0, 2, 1)
+            x = func.pad(x, (0, padding), mode='circular')
+            x = x.permute(0, 2, 1)
+        return x

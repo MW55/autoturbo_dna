@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
-import torch.nn.functional as func
-#testing
-from sdna.net.core.channel import MarkovModelKL
+#from sdna.net.core.channel import MarkovModelKL
 
 
 def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
@@ -23,11 +21,9 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
     if args['encoder'] == 'rnnatt':
         hidden = model.enc.initHidden()
 
-    #testing
     #kl = MarkovModelKL(3)
     #kl.fit("/home/wintermute/projects/autoturbo_dna/eval/cw_40_60_hp3.fasta")
-    #done
-    #testing
+
     huber_loss = torch.nn.SmoothL1Loss(beta=1.0)
     #tesing_done
 
@@ -37,18 +33,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
                 opt.zero_grad()
         else:
             optimizer.zero_grad()
-        #print(i)
-        ### testing
-        #rand = np.random.randint(0, 100)
-        #if rand < 101:
-        #    x_train = torch.randint(0, 1, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-        #elif rand < 20:
-        #    print("under 20")
-        #    x_train = torch.randint(1, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-        #test done
-        #else:
+
         x_train = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-        #x_train = torch.cat((x_train, torch.zeros(256, 16, 1)), dim=1)
 
         if args["all_errors"] and not warmup:
             padding = args["block_padding"]
@@ -60,7 +46,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
             gradient.backward()
             loss += float(gradient.item())
 
-            torch.nn.utils.clip_grad_norm(model.parameters(), 1)  # 0.5
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
 
             if mode == "combined":
                 for opt in optimizer:
@@ -68,8 +54,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
             else:
                 optimizer.step()
         else:
-            padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"] #TODO turn on padding all the time?
-            #padding = args["block_padding"]
+            padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"]
             if args['encoder'] == 'rnnatt':
                 s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, hidden=hidden)
                 hidden = s_dec[1]
@@ -88,8 +73,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
                     hidden = s_dec[1]
                 gradient = huber_loss(s_dec, x_train)
                 #gradient = func.binary_cross_entropy(s_dec, x_train)
-                #if mode == "encoder":   # weakens the gradients of the encoder when the generated code is unstable
-                #    gradient += model.channel.evaluate(s_enc) #kl, *1.5   # TODO: find a better way to punish the net THE *1.5 is experimental!
+                if args['constraint_training'] and mode == "encoder":
+                    gradient += model.channel.evaluate(s_enc)  # weakens the gradients of the encoder when the generated code is unstable
                 #    if args["encoder"] == "vae":
                 #        gradient += args['beta']*((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
                     #if np.random.randint(0, 2) == 0:
@@ -106,32 +91,11 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
                 x_sys_coder = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
                 gradient = huber_loss(x_sys_enc, x_sys_coder)
 
-                #get_same_packages(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), x_sys_enc, 2, 0)
-                '''
-                flat_noise = torch.flatten(noisy[:, :, 0].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
-                flat_x_sys_enc = torch.flatten(x_sys_enc, start_dim=1)
-    
-                same_x_sys = 0
-                for i in range(flat_noise.shape[0]):
-                    if torch.all(flat_noise[i] == flat_x_sys_enc[i]):
-                        same_x_sys += 1
-                print("xsys: " + str(same_x_sys))
-                '''
             elif mode == "coder2":
                 x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
                 x_p1_coder = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
                 gradient = huber_loss(x_p1_enc, x_p1_coder)
-                #get_same_packages(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), x_p1_enc, 2, 0)
-                '''
-                flat_noise_1 = torch.flatten(noisy[:, :, 1].view((noisy.size()[0], noisy.size()[1], 1)), start_dim=1)[:, :-2]
-                flat_x_sys_enc = torch.flatten(x_p1_enc, start_dim=1)
-    
-                same_x_p1 = 0
-                for i in range(flat_noise_1.shape[0]):
-                    if torch.all(flat_noise_1[i] == flat_x_sys_enc[i]):
-                        same_x_p1 += 1
-                print("x_p1: " + str(same_x_p1))
-                '''
+
             elif mode == "coder3":
                 x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
                 x_p2_coder = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
@@ -183,8 +147,6 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
     with torch.no_grad():
         for i in range(0, int(args["blocks"] / args["batch_size"])):
             x_val = torch.randint(0, 2, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
-            #x_val = torch.cat((x_val, torch.zeros(256, 16, 1)), dim=1)
-            #x_val = torch.randint(0, 1, (args["batch_size"], args["block_length"], 1), dtype=torch.float)
             '''
             padding = args["block_padding"]
             s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch, validate=True)
@@ -200,7 +162,6 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
                 s_dec = s_dec[0]
             else:
                 s_dec, s_enc, c_dec, noisy = model(x_val, padding=padding, seed=args["seed"] + epoch, validate=True)
-            #print("validate")
             if not args["channel"] == "continuous":
                 stability += (1.0 - model.channel.evaluate(s_enc.detach()))
 
@@ -248,7 +209,7 @@ def validate(model, args, epoch=1, mode="encoder", hidden=None):
     accuracy /= (args["blocks"] * args["block_length"] * code_rate) #+ int(args["redundancy"])
     stability /= (args["blocks"] / args["batch_size"])
     noise /= (args["blocks"] * args["block_length"] * 3.0)
-    return accuracy, stability, noise
+    return accuracy, stability, noise, full_corr
 
 
 def get_correct_coder(s_enc, c_dec, args):
