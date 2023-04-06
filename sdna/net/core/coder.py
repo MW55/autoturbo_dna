@@ -848,7 +848,7 @@ class ResNetCoder(CoderBase):
 
 class ResNetCoder_lat(CoderBase):
     def __init__(self, arguments):
-        super(ResNetCoder, self).__init__(arguments)
+        super(ResNetCoder_lat, self).__init__(arguments)
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
