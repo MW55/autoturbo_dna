@@ -852,6 +852,150 @@ class ResNetCoder_lat(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]) #+16
+        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]) #+16
+        if self.args["rate"] == "onethird":
+            self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]),self.args["block_length"])  # +16
+
+        self._cnn_1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]), self.args["coder_units"], kernel_size=3, padding=1)
+        self._bn_1 = torch.nn.BatchNorm1d(self.args["coder_units"])
+
+        layers = []
+        for i in range(self.args["coder_layers"]):
+            layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"]))
+        self._layers = torch.nn.Sequential(*layers)
+
+        self._cnn_2 = torch.nn.Conv1d(self.args["coder_units"], (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]), kernel_size=7, padding=4)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
+        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
+        self._linear_1 = torch.nn.DataParallel(self._linear_1)
+        self._linear_2 = torch.nn.DataParallel(self._linear_2)
+        if self.args["rate"] == "onethird":
+            self._linear_3 = torch.nn.DataParallel(self._linear_3)
+
+    def forward(self, inputs):
+        x = self._cnn_1(inputs)
+        x = self._bn_1(x)
+        x = func.relu(x, inplace=True)
+
+        x = self._layers(x)
+
+        x = self._cnn_2(x)
+
+        x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
+        x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
+
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        if self.args["rate"] == "onethird":
+            x_p2 = inputs[:, :, 2].view((x.size()[0], x.size()[1], 1))
+
+            x_p2 = torch.flatten(x_p2, start_dim=1)
+            x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+            x = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        else:
+            x = torch.cat([x_sys, x_p1], dim=2)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
+
+        return x
+
+class ResNetCoder_lat2(CoderBase):
+    def __init__(self, arguments):
+        super(ResNetCoder_lat2, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
+
+        self._linear_1_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]+(self.args["redundancy"]//2)) #+16
+        self._linear_1_2 = torch.nn.Linear(
+            (self.args["block_length"] + self.args["block_padding"] + (self.args["redundancy"] // 2)),
+            self.args["block_length"])
+        self._linear_2_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]+(self.args["redundancy"]//2)) #+16
+        self._linear_2_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                            + (self.args["redundancy"]//2)), self.args["block_length"]) #+16
+        if self.args["rate"] == "onethird":
+            self._linear_3_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]),self.args["block_length"]+(self.args["redundancy"]//2))  # +16
+            self._linear_3_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                                + (self.args["redundancy"]//2)),self.args["block_length"])  # +16
+        self._cnn_1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]), self.args["coder_units"], kernel_size=3, padding=1)
+        self._bn_1 = torch.nn.BatchNorm1d(self.args["coder_units"])
+
+        layers = []
+        for i in range(self.args["coder_layers"]):
+            layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"]))
+        self._layers = torch.nn.Sequential(*layers)
+
+        self._cnn_2 = torch.nn.Conv1d(self.args["coder_units"], (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]), kernel_size=7, padding=4)
+
+    def set_parallel(self):
+        """
+        Ensures that forward and backward propagation operations can be performed on multiple GPUs.
+        """
+        self._cnn_1 = torch.nn.DataParallel(self._cnn_1)
+        self._cnn_2 = torch.nn.DataParallel(self._cnn_2)
+        self._linear_1 = torch.nn.DataParallel(self._linear_1)
+        self._linear_2 = torch.nn.DataParallel(self._linear_2)
+        if self.args["rate"] == "onethird":
+            self._linear_3 = torch.nn.DataParallel(self._linear_3)
+
+    def forward(self, inputs):
+        x = self._cnn_1(inputs)
+        x = self._bn_1(x)
+        x = func.relu(x, inplace=True)
+
+        x = self._layers(x)
+
+        x = self._cnn_2(x)
+
+        x_sys = x[:, :, 0].view((x.size()[0], x.size()[1], 1))
+        x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
+
+        x_sys = torch.flatten(x_sys, start_dim=1)
+        x_sys = self.actf(self._dropout(self._linear_1_1(x_sys)))
+        x_sys = self.actf(self._dropout(self._linear_1_2(x_sys)))
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        x_p1 = torch.flatten(x_p1, start_dim=1)
+        x_p1 = self.actf(self._dropout(self._linear_2_1(x_p1)))
+        x_p1 = self.actf(self._dropout(self._linear_2_2(x_p1)))
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+        if self.args["rate"] == "onethird":
+            x_p2 = inputs[:, :, 2].view((x.size()[0], x.size()[1], 1))
+
+            x_p2 = torch.flatten(x_p2, start_dim=1)
+            x_p2 = self.actf(self._dropout(self._linear_3_1(x_p2)))
+            x_p2 = self.actf(self._dropout(self._linear_3_2(x_p2)))
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+
+            x = torch.cat([x_sys, x_p1, x_p2], dim=2)
+        else:
+            x = torch.cat([x_sys, x_p1], dim=2)
+        if not self.args["channel"] == "continuous" or self.args["continuous_coder"]:
+            x = Quantizer.apply(x)
+
+        return x
+
+'''
+class ResNetCoder_lat(CoderBase):
+    def __init__(self, arguments):
+        super(ResNetCoder_lat, self).__init__(arguments)
+
+        self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
+
         self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
         self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]+ self.args["redundancy"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
         if self.args["rate"] == "onethird":
@@ -912,6 +1056,8 @@ class ResNetCoder_lat(CoderBase):
             x = Quantizer.apply(x)
 
         return x
+
+'''
 
 class ResNetBlock2d(torch.nn.Module):
     def __init__(self, in_channels, out_channels):

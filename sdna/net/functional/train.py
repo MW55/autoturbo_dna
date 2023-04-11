@@ -54,7 +54,11 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
             else:
                 optimizer.step()
         else:
-            padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"]
+            #ToDo test
+            #TODO CHANGE IT SO THAT THE LAT REDUNDANCY IS REMOVED BY THE CODER, AND THE DECODER GET ONLY BLOCKLENGTH AMOUNT OF DATA
+            #padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"]
+            padding = args["block_padding"]
+            #test done
             if args['encoder'] == 'rnnatt':
                 s_dec, s_enc, c_dec, noisy = model(x_train, padding=padding, seed=args["seed"] + epoch, hidden=hidden)
                 hidden = s_dec[1]
