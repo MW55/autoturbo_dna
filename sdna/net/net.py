@@ -158,8 +158,8 @@ class Net(object):
                                                        mode="coder3", warmup = warmup)
                 all_optimizers = [enc_optimizer, dec_optimizer,
                                   coder_optimizer] if not self.args['separate_coder_training'] else [enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3]
-                for i in range(20): #combined_steps
-                    res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined", warmup = warmup)
+                #for i in range(20): #combined_steps
+                #    res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined", warmup = warmup)
 
                 res["Accuracy"], res["Stability"], res["Noise"], res["CorrectBlocks"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
@@ -171,7 +171,7 @@ class Net(object):
             #            print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
             #        del last_10_sdec_loss[0]
 
-            if epoch % 1000 == 0 and not self.args["batch_size"] >= 1024:
+            if epoch % 100 == 0 and not self.args["batch_size"] >= 1024:
                 self.args["batch_size"] = self.args["batch_size"]*2
                 print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
 
