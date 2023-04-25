@@ -24,7 +24,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
     #kl = MarkovModelKL(3)
     #kl.fit("/home/wintermute/projects/autoturbo_dna/eval/cw_40_60_hp3.fasta")
 
-    huber_loss = torch.nn.SmoothL1Loss(beta=1.0)
+    huber_loss = torch.nn.SmoothL1Loss(beta=1.0) #ToDO: make it a parameter!
     #tesing_done
 
     for i in range(0, int(args["blocks"] / args["batch_size"])):
@@ -106,8 +106,8 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
                 gradient = huber_loss(x_p2_enc, x_p2_coder)
                 #get_same_packages(noisy[:, :, 2].view((noisy.size()[0], noisy.size()[1], 1)), x_p2_enc, 2, 0)
             else:
-                #gradient = huber_loss(s_dec, x_train)
-                gradient = huber_loss(s_enc, c_dec)
+                gradient = huber_loss(s_dec, x_train) #ToDo training either on input/output or encoded/coder output, make it a parameter! Also, if lat, it cant be trained on enc out
+                #gradient = huber_loss(s_enc, c_dec)
                 #gradient = func.mse_loss(s_enc, c_dec)
             gradient.backward()
             #if mode in ["coder1", "coder2", "coder3"]:
