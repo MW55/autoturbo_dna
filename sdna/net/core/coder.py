@@ -69,10 +69,14 @@ class CoderMLP(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._linear_1 = torch.nn.Linear(self.args["block_length"] + self.args["block_padding"], self.args["block_length"])
-        self._linear_2 = torch.nn.Linear(self.args["block_length"] + self.args["block_padding"], self.args["block_length"])
+        self._linear_1 = torch.nn.Linear(self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"],
+                                         self.args["block_length"])
+        self._linear_2 = torch.nn.Linear(self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"],
+                                         self.args["block_length"])
         if self.args["rate"] == "onethird":
-            self._linear_3 = torch.nn.Linear(self.args["block_length"] + self.args["block_padding"], self.args["block_length"])
+            self._linear_3 = torch.nn.Linear(self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"],
+                                             self.args["block_length"])
+
 
     def set_parallel(self):
         """
@@ -130,23 +134,32 @@ class CoderCNN(CoderBase):
                              in_channels=1,
                              out_channels=self.args["coder_units"],# + 16,
                              kernel_size=self.args["coder_kernel"])
-        self._linear_1 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
                              out_channels=self.args["coder_units"], #+16
                              kernel_size=self.args["coder_kernel"])
-        self._linear_2 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
-        self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
-        self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+
+        self._linear_1 = torch.nn.Linear((self.args["coder_units"]) * (
+                    self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]),
+                                         self.args["block_length"])
+        self._linear_2 = torch.nn.Linear((self.args["coder_units"]) * (
+                self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]),
+                                         self.args["block_length"])
+        if self.args["batch_norm"]:
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"])
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"])
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
                                  out_channels=self.args["coder_units"], #+16
                                  kernel_size=self.args["coder_kernel"])
-            self._linear_3 = torch.nn.Linear((self.args["coder_units"]) * (self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]), self.args["block_length"]+int(self.args["redundancy"])) #+16
-            self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + int(self.args["redundancy"]))
+            self._linear_3 = torch.nn.Linear((self.args["coder_units"]) * (
+                    self.args["block_length"] + int(self.args["redundancy"]) + self.args["block_padding"]),
+                                             self.args["block_length"])
+            if self.args["batch_norm"]:
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"])
 
     def set_parallel(self):
         """
@@ -172,23 +185,26 @@ class CoderCNN(CoderBase):
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))
 
-        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
-        x_sys = self._batch_norm_1(x_sys)
+        x_sys = x_sys.reshape((inputs.size()[0], self.args["block_length"], 1))
+        if self.args["batch_norm"]:
+            x_sys = self._batch_norm_1(x_sys)
 
         x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
         x_p1 = self._cnn_2(x_p1)
         x_p1 = torch.flatten(x_p1, start_dim=1)
         x_p1 = self.actf(self._dropout(self._linear_2(x_p1)))
-        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
-        x_p1 = self._batch_norm_2(x_p1)
+        x_p1 = x_p1.reshape((inputs.size()[0], self.args["block_length"], 1))
+        if self.args["batch_norm"]:
+            x_p1 = self._batch_norm_2(x_p1)
 
         if self.args["rate"] == "onethird":
             x_p2 = inputs[:, :, 2].view((inputs.size()[0], inputs.size()[1], 1))
             x_p2 = self._cnn_3(x_p2)
             x_p2 = torch.flatten(x_p2, start_dim=1)
             x_p2 = self.actf(self._dropout(self._linear_3(x_p2)))
-            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"]+int(self.args["redundancy"]), 1))
-            x_p2 = self._batch_norm_3(x_p2)
+            x_p2 = x_p2.reshape((inputs.size()[0], self.args["block_length"], 1))
+            if self.args["batch_norm"]:
+                x_p2 = self._batch_norm_3(x_p2)
 
             x = torch.cat([x_sys, x_p1, x_p2], dim=2)
         else:
@@ -223,14 +239,18 @@ class CoderRNN(CoderBase):
                           batch_first=True,
                           dropout=0,
                           bidirectional=True)
-        self._linear_1 = torch.nn.Linear(2 * self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_1 = torch.nn.Linear(2 * self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                         self.args["block_length"])
         self._rnn_2 = rnn(1, self.args["coder_units"],
                           num_layers=self.args["coder_layers"],
                           bias=True,
                           batch_first=True,
                           dropout=0,
                           bidirectional=True)
-        self._linear_2 = torch.nn.Linear(2 * self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear(2 * self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                         self.args["block_length"])
 
         if self.args["rate"] == "onethird":
             self._rnn_3 = rnn(1, self.args["coder_units"],
@@ -239,7 +259,9 @@ class CoderRNN(CoderBase):
                               batch_first=True,
                               dropout=0,
                               bidirectional=True)
-            self._linear_3 = torch.nn.Linear(2 * self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+            self._linear_3 = torch.nn.Linear(2 * self.args["coder_units"] * (
+                    self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                             self.args["block_length"])
 
     def set_parallel(self):
         """
@@ -389,7 +411,9 @@ class CoderCNN_RNN(CoderBase):
                                    hidden_size=self.args["coder_units"],
                                    num_layers=self.args["coder_layers"],
                                    batch_first=True)
-        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                         self.args["block_length"])
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
@@ -399,10 +423,14 @@ class CoderCNN_RNN(CoderBase):
                                    hidden_size=self.args["coder_units"],
                                    num_layers=self.args["coder_layers"],
                                    batch_first=True)
-        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                         self.args["block_length"])
         if self.args["batch_norm"]:
-            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"])
-            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"])
+            self._batch_norm_1 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"]
+                                                      + self.args["redundancy"])
+            self._batch_norm_2 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"]
+                                                      + self.args["redundancy"])
         if self.args["rate"] == "onethird":
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
@@ -413,9 +441,12 @@ class CoderCNN_RNN(CoderBase):
                                        hidden_size=self.args["coder_units"],
                                        num_layers=self.args["coder_layers"],
                                        batch_first=True)
-            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (
+                    self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                             self.args["block_length"])
             if self.args["batch_norm"]:
-                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"])
+                self._batch_norm_3 = torch.nn.BatchNorm1d(self.args["block_length"] + self.args["block_padding"]
+                                                          + self.args["redundancy"])
     def set_parallel(self):
         """
         Ensures that forward and backward propagation operations can be performed on multiple GPUs.
@@ -492,29 +523,33 @@ class CoderTransformer(CoderBase):
         self._encoder_layer_1 = torch.nn.TransformerEncoderLayer(d_model=self.args["coder_units"],
                                                                  nhead=self.args["coder_kernel"],
                                                                  dropout=self.args["coder_dropout"],
-                                                                 activation='relu', #only relu or gelu work as activation function
+                                                                 activation='relu',
                                                                  batch_first=True)
         self._transformer_1 = torch.nn.TransformerEncoder(self._encoder_layer_1, num_layers=self.args["coder_layers"])
         self._linear_1 = torch.nn.Linear(
-            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
-            self.args["block_length"])
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]
+                                        + self.args["redundancy"]), self.args["block_length"])
 
         self._encoder_layer_2 = torch.nn.TransformerEncoderLayer(d_model=self.args["coder_units"],
                                                                  nhead=self.args["coder_kernel"],
                                                                  dropout=self.args["coder_dropout"],
-                                                                 activation='relu', #only relu or gelu work as activation function
+                                                                 activation='relu',
                                                                  batch_first=True)
         self._transformer_2 = torch.nn.TransformerEncoder(self._encoder_layer_2, num_layers=self.args["coder_layers"])
-        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear(
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]
+                                        + self.args["redundancy"]), self.args["block_length"])
 
         if self.args["rate"] == "onethird":
             self._encoder_layer_3 = torch.nn.TransformerEncoderLayer(d_model=self.args["coder_units"],
                                                                      nhead=self.args["coder_kernel"],
                                                                      dropout=self.args["coder_dropout"],
-                                                                     activation='relu', #only relu or gelu work as activation function
+                                                                     activation='relu',
                                                                      batch_first=True)
             self._transformer_3 = torch.nn.TransformerEncoder(self._encoder_layer_3, num_layers=self.args["coder_layers"])
-            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+            self._linear_3 = torch.nn.Linear(
+                self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]
+                                            + self.args["redundancy"]), self.args["block_length"])
 
     def set_parallel(self):
         """
@@ -582,7 +617,9 @@ class CoderCNN_conc(CoderBase):
                            out_channels=self.args["coder_units"],
                            kernel_size=self.args["coder_kernel"])
         '''
-        self._linear = torch.nn.Linear(self.args["coder_units"] * 3 * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]*3)
+        self._linear = torch.nn.Linear(self.args["coder_units"] * 3 * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                       self.args["block_length"]*3)
 
     def set_parallel(self):
         """
@@ -665,35 +702,44 @@ class CoderIDT(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._idl_1 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 2, 3, 1)
+        self._idl_1 = IDTLayer(self.args["block_length"]+self.args["block_padding"]+ self.args["redundancy"],
+                               self.args["block_length"]+self.args["block_padding"]+ self.args["redundancy"], 2, 3, 1)
         #self._idl_1 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_1 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
-        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                         self.args["block_length"])
         #self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"]), self.args["block_length"])
-        self._idl_2 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 2, 3, 1)
+        self._idl_2 = IDTLayer(self.args["block_length"]+self.args["block_padding"]+ self.args["redundancy"],
+                               self.args["block_length"]+self.args["block_padding"]+ self.args["redundancy"], 2, 3, 1)
         #self._idl_2 = IDTLayer(self.args["block_length"], self.args["block_length"])
         self._cnn_2 = Conv1d(self.args["coder_actf"],
                              layers=self.args["coder_layers"],
                              in_channels=1,
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
-        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear(self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                         self.args["block_length"])
         #self._linear_2 = torch.nn.Linear(
         #    self.args["coder_units"] * (self.args["block_length"]),
         #    self.args["block_length"])
         if self.args["rate"] == "onethird":
-            self._idl_3 = IDTLayer(self.args["block_length"]+self.args["block_padding"], self.args["block_length"]+self.args["block_padding"], 2, 3, 1)
+            self._idl_3 = IDTLayer(self.args["block_length"]+self.args["block_padding"] + self.args["redundancy"],
+                                   self.args["block_length"]+self.args["block_padding"] + self.args["redundancy"], 2, 3, 1)
             #self._idl_3 = IDTLayer(self.args["block_length"], self.args["block_length"])
             self._cnn_3 = Conv1d(self.args["coder_actf"],
                                  layers=self.args["coder_layers"],
                                  in_channels=1,
                                  out_channels=self.args["coder_units"],
                                  kernel_size=self.args["coder_kernel"])
-            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+            self._linear_3 = torch.nn.Linear(self.args["coder_units"] * (
+                    self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                             self.args["block_length"])
             #self._linear_3 = torch.nn.Linear(
             #    self.args["coder_units"] * (self.args["block_length"]),
             #    self.args["block_length"])
@@ -784,12 +830,16 @@ class ResNetCoder(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
-        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]), self.args["block_length"]) #+16
+        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]), self.args["block_length"]) #+16
         if self.args["rate"] == "onethird":
-            self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])  # +16
+            self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                              + self.args["redundancy"]),self.args["block_length"])  # +16
 
-        self._cnn_1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"]), self.args["coder_units"], kernel_size=3, padding=1)
+        self._cnn_1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"]
+                                       + self.args["redundancy"]), self.args["coder_units"], kernel_size=3, padding=1)
         self._bn_1 = torch.nn.BatchNorm1d(self.args["coder_units"])
 
         layers = []
@@ -797,7 +847,9 @@ class ResNetCoder(CoderBase):
             layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"]))
         self._layers = torch.nn.Sequential(*layers)
 
-        self._cnn_2 = torch.nn.Conv1d(self.args["coder_units"], (self.args["block_length"] + self.args["block_padding"]), kernel_size=7, padding=4)
+        self._cnn_2 = torch.nn.Conv1d(self.args["coder_units"],
+                                      (self.args["block_length"] + self.args["block_padding"]
+                                       + self.args["redundancy"]), kernel_size=7, padding=4)
 
     def set_parallel(self):
         """
@@ -1165,9 +1217,12 @@ class ResNetCoder2d(CoderBase):
         self.interleaver = Interleaver()
         self.deinterleaver = DeInterleaver()
 
-        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]), self.args["block_length"])
+        self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]),self.args["block_length"])
 
         self._cnn_1 = torch.nn.Conv2d(in_channels=1, out_channels=self.args["coder_units"], kernel_size=3, stride=1, padding=1)
         self._bn_1 = torch.nn.BatchNorm2d(self.args["coder_units"])
@@ -1258,9 +1313,12 @@ class ResNetCoder2d_1d(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
-        self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]),self.args["block_length"])
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]), self.args["block_length"])
+        self._linear_2 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]), self.args["block_length"])
+        self._linear_3 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]),self.args["block_length"])
 
         self._cnn_1_2d = torch.nn.Conv2d(in_channels=1, out_channels=self.args["coder_units"], kernel_size=3, stride=1, padding=1)
         self._bn_1_2d = torch.nn.BatchNorm2d(self.args["coder_units"])
@@ -1345,9 +1403,11 @@ class ResNetCoder_sep(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]), self.args["block_length"]) #+16
+        self._linear_1 = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                          + self.args["redundancy"]), self.args["block_length"]) #+16
 
-        self.conv1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"]), self.args["coder_units"], kernel_size=5, padding=2) #3,1
+        self.conv1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                     self.args["coder_units"], kernel_size=5, padding=2) #3,1
         self.bn1 = torch.nn.BatchNorm1d(self.args["coder_units"])
 
         layers = []
@@ -1355,7 +1415,8 @@ class ResNetCoder_sep(CoderBase):
             layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"], kernel_size=5, padding=2))
         self.layers = torch.nn.Sequential(*layers)
 
-        self.conv2 = torch.nn.Conv1d(self.args["coder_units"], (self.args["block_length"] + self.args["block_padding"]), kernel_size=5, padding=2) #3,1
+        self.conv2 = torch.nn.Conv1d(self.args["coder_units"], (self.args["block_length"] + self.args["block_padding"]
+                                                                + self.args["redundancy"]), kernel_size=5, padding=2) #3,1
 
     def forward(self, inputs):
         x = self.conv1(inputs)
@@ -1380,7 +1441,8 @@ class ResNetCoder_conc(CoderBase):
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
 
-        self._linear = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"])*3, self.args["block_length"]*3)
+        self._linear = torch.nn.Linear((self.args["block_length"] + self.args["block_padding"]
+                                        + self.args["redundancy"])*3, self.args["block_length"]*3)
 
 
         self._cnn_1 = torch.nn.Conv1d(1, self.args["coder_units"], kernel_size=27, padding=13)
@@ -1431,7 +1493,9 @@ class CNN_sep(CoderBase):
                              in_channels=1,
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
-        self._linear_1 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_1 = torch.nn.Linear(
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]
+                                        + self.args["redundancy"]), self.args["block_length"])
 
 
     def forward(self, inputs):
@@ -1462,10 +1526,12 @@ class CoderCNN_3linears(CoderBase):
                              out_channels=self.args["coder_units"],
                              kernel_size=self.args["coder_kernel"])
         self._linear_1_1 = torch.nn.Linear(
-            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
-            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]))
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]))
 
-        self._linear_1_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_1_2 = torch.nn.Linear(self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                           self.args["block_length"])
         self._linear_1_3 = torch.nn.Linear(self.args["block_length"], self.args["block_length"])
 
         self._cnn_2 = Conv1d(self.args["coder_actf"],
@@ -1475,10 +1541,12 @@ class CoderCNN_3linears(CoderBase):
                              kernel_size=self.args["coder_kernel"])
 
         self._linear_2_1 = torch.nn.Linear(
-            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
-            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]))
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+            self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]))
 
-        self._linear_2_2 = torch.nn.Linear(self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]), self.args["block_length"])
+        self._linear_2_2 = torch.nn.Linear(self.args["coder_units"] * (
+                self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                                           self.args["block_length"])
         self._linear_2_3 = torch.nn.Linear(self.args["block_length"], self.args["block_length"])
 
         if self.args["rate"] == "onethird":
@@ -1489,11 +1557,11 @@ class CoderCNN_3linears(CoderBase):
                                  kernel_size=self.args["coder_kernel"])
 
             self._linear_3_1 = torch.nn.Linear(
-                self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
-                self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]))
+                self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
+                self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]))
 
             self._linear_3_2 = torch.nn.Linear(
-                self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"]),
+                self.args["coder_units"] * (self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
                 self.args["block_length"])
             self._linear_3_3 = torch.nn.Linear(self.args["block_length"], self.args["block_length"])
 
