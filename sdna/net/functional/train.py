@@ -24,7 +24,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
     #kl = MarkovModelKL(3)
     #kl.fit("/home/wintermute/projects/autoturbo_dna/eval/cw_40_60_hp3.fasta")
 
-    huber_loss = torch.nn.SmoothL1Loss(beta=1.0) #ToDO: make it a parameter!
+    sl1loss = torch.nn.SmoothL1Loss(beta=args['sl1loss_beta'])
     #tesing_done
 
     for i in range(0, int(args["blocks"] / args["batch_size"])):
@@ -42,7 +42,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
             s_dec = torch.clamp(s_dec, 0.0, 1.0)
             if args['encoder'] == 'rnnatt':
                 hidden = s_dec[1]
-            gradient = huber_loss(s_dec, x_train)
+            gradient = sl1loss(s_dec, x_train)
             gradient.backward()
             loss += float(gradient.item())
 
@@ -55,7 +55,6 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
                 optimizer.step()
         else:
             #ToDo test
-            #TODO CHANGE IT SO THAT THE LAT REDUNDANCY IS REMOVED BY THE CODER, AND THE DECODER GET ONLY BLOCKLENGTH AMOUNT OF DATA
             #padding = 0 if mode == "encoder" or mode == "decoder" else args["block_padding"]
             padding = args["block_padding"]
             #test done
@@ -75,7 +74,7 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
                 s_dec = torch.clamp(s_dec, 0.0, 1.0)
                 if args['encoder'] == 'rnnatt':
                     hidden = s_dec[1]
-                gradient = huber_loss(s_dec, x_train)
+                gradient = sl1loss(s_dec, x_train)
                 #gradient = func.binary_cross_entropy(s_dec, x_train)
                 if args['constraint_training'] and mode == "encoder":
                     gradient += model.channel.evaluate(s_enc)  # weakens the gradients of the encoder when the generated code is unstable
@@ -93,21 +92,23 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
             elif mode == "coder1":
                 x_sys_enc = s_enc[:, :, 0].view((s_enc.size()[0], s_enc.size()[1], 1))
                 x_sys_coder = c_dec[:, :, 0].view((c_dec.size()[0], c_dec.size()[1], 1))
-                gradient = huber_loss(x_sys_enc, x_sys_coder)
+                gradient = sl1loss(x_sys_enc, x_sys_coder)
 
             elif mode == "coder2":
                 x_p1_enc = s_enc[:, :, 1].view((s_enc.size()[0], s_enc.size()[1], 1))
                 x_p1_coder = c_dec[:, :, 1].view((c_dec.size()[0], c_dec.size()[1], 1))
-                gradient = huber_loss(x_p1_enc, x_p1_coder)
+                gradient = sl1loss(x_p1_enc, x_p1_coder)
 
             elif mode == "coder3":
                 x_p2_enc = s_enc[:, :, 2].view((s_enc.size()[0], s_enc.size()[1], 1))
                 x_p2_coder = c_dec[:, :, 2].view((c_dec.size()[0], c_dec.size()[1], 1))
-                gradient = huber_loss(x_p2_enc, x_p2_coder)
+                gradient = sl1loss(x_p2_enc, x_p2_coder)
                 #get_same_packages(noisy[:, :, 2].view((noisy.size()[0], noisy.size()[1], 1)), x_p2_enc, 2, 0)
             else:
-                gradient = huber_loss(s_dec, x_train) #ToDo training either on input/output or encoded/coder output, make it a parameter! Also, if lat, it cant be trained on enc out
-                #gradient = huber_loss(s_enc, c_dec)
+                if args["coder_target"] == "reconstruction" or args["redundancy"] != 0:
+                    gradient = sl1loss(s_dec, x_train)
+                else:
+                    gradient = sl1loss(s_enc, c_dec)
                 #gradient = func.mse_loss(s_enc, c_dec)
             gradient.backward()
             #if mode in ["coder1", "coder2", "coder3"]:

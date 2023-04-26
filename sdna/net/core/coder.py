@@ -1398,7 +1398,7 @@ class ResNetCoder2d_1d(CoderBase):
         return x
 
 class ResNetCoder_sep(CoderBase):
-    def __init__(self, arguments): #ToDo use the config
+    def __init__(self, arguments):
         super(ResNetCoder_sep, self).__init__(arguments)
 
         self._dropout = torch.nn.Dropout(self.args["coder_dropout"])
@@ -1407,16 +1407,16 @@ class ResNetCoder_sep(CoderBase):
                                           + self.args["redundancy"]), self.args["block_length"]) #+16
 
         self.conv1 = torch.nn.Conv1d((self.args["block_length"] + self.args["block_padding"] + self.args["redundancy"]),
-                                     self.args["coder_units"], kernel_size=5, padding=2) #3,1
+                                     self.args["coder_units"], kernel_size=self.args["coder_kernel"], padding=self.args["coder_kernel"]//2) #3,1
         self.bn1 = torch.nn.BatchNorm1d(self.args["coder_units"])
 
         layers = []
         for i in range(self.args["coder_layers"]):
-            layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"], kernel_size=5, padding=2))
+            layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"], kernel_size=self.args["coder_kernel"], padding=self.args["coder_kernel"]//2)) #5,2
         self.layers = torch.nn.Sequential(*layers)
 
         self.conv2 = torch.nn.Conv1d(self.args["coder_units"], (self.args["block_length"] + self.args["block_padding"]
-                                                                + self.args["redundancy"]), kernel_size=5, padding=2) #3,1
+                                                                + self.args["redundancy"]), kernel_size=self.args["coder_kernel"], padding=self.args["coder_kernel"]//2) #3,1
 
     def forward(self, inputs):
         x = self.conv1(inputs)
@@ -1434,7 +1434,7 @@ class ResNetCoder_sep(CoderBase):
         return x
 
 class ResNetCoder_conc(CoderBase):
-    def __init__(self, arguments): #ToDo use the config
+    def __init__(self, arguments):
         super(ResNetCoder_conc, self).__init__(arguments)
 
         self._dropout = torch.nn.Dropout(0)
@@ -1445,12 +1445,12 @@ class ResNetCoder_conc(CoderBase):
                                         + self.args["redundancy"])*3, self.args["block_length"]*3)
 
 
-        self._cnn_1 = torch.nn.Conv1d(1, self.args["coder_units"], kernel_size=27, padding=13)
+        self._cnn_1 = torch.nn.Conv1d(1, self.args["coder_units"], kernel_size=self.args["coder_kernel"], padding=self.args["coder_kernel"]//2) #27,13
         self._bn_1 = torch.nn.BatchNorm1d(self.args["coder_units"]) #out_channels
 
         layers = []
         for i in range(self.args["coder_layers"]):
-            layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"], kernel_size=21, padding=10)) #21, 10
+            layers.append(ResNetBlock(self.args["coder_units"], self.args["coder_units"], kernel_size=self.args["coder_kernel"], padding=self.args["coder_kernel"]//2)) #21, 10
         self._layers = torch.nn.Sequential(*layers)
 
         '''
@@ -1460,7 +1460,7 @@ class ResNetCoder_conc(CoderBase):
                            out_channels=1,
                            kernel_size=15) #self.args["coder_kernel"]
         '''
-        self._cnn_2 = torch.nn.Conv1d(self.args["coder_units"], 1, kernel_size=29, padding=14)
+        self._cnn_2 = torch.nn.Conv1d(self.args["coder_units"], 1, kernel_size=self.args["coder_kernel"], padding=self.args["coder_kernel"]//2)
 
     def forward(self, inputs):
         x = inputs.transpose(1, 2).reshape(self.args["batch_size"], -1, 1).transpose(1, 2)

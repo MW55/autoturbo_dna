@@ -437,7 +437,7 @@ class SDNAArgs:
                                        metavar='CHOICE',
                                        dest='channel'
                                        )
-        self.net_training.add_argument("--continuous_coder",
+        self.net_training.add_argument("--continuous-coder",
                                        help="toggles that the intermediate decoder (coder) passes continuous values to the decoder.",
                                        action="store_true",
                                        dest="continuous_coder")
@@ -445,6 +445,25 @@ class SDNAArgs:
                                        help="If the code should also be trained to adhere to constraints.",
                                        action="store_true",
                                        dest="constraint_training")
+        self.net_training.add_argument("--loss-beta",
+                                       help="beta parameter for the smooth L1 loss.",
+                                       type=float,
+                                       default=1.0,
+                                       metavar='X',
+                                       dest='sl1loss_beta')
+        self.net_training.add_argument("--coder-train-target",
+                                       help="how the coder should be trained, for best reconstruction accuracy or to be as close to the encoder output as possible",
+                                       choices=["reconstruction", "encoded_data"],
+                                       type=str.lower,
+                                       default='encoded_data',
+                                       metavar='CHOICE',
+                                       dest='coder_target')
+        self.net_training.add_argument("--simultaneously-warmup",
+                                       help='if using simultaneously training, how many warmup epochs should be trained seperatly, before moving to simultaneously training.',
+                                       type=int,
+                                       default=0,
+                                       metavar='X',
+                                       dest='warmup')
 
     def _dna_error_simulation(self):
         """
