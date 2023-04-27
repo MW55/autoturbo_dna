@@ -464,6 +464,12 @@ class SDNAArgs:
                                        default=0,
                                        metavar='X',
                                        dest='warmup')
+        self.net_training.add_argument("--combined-steps",
+                                       help="If and for how many steps all parts should be trained together.",
+                                       type=int,
+                                       default=0,
+                                       metavar="X",
+                                       dest="combined_steps")
 
     def _dna_error_simulation(self):
         """

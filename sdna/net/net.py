@@ -110,7 +110,7 @@ class Net(object):
         else:
             ae_optimizer, enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3 = self._initialize_optimizers()
         mult = self.args["amplifier"]
-        last_10_sdec_loss = []
+        last_10_acc = []
         indel_mult = 1
         self.model.channel._dna_simulator.indel_multiplier = indel_mult
         for epoch in range(1, self.args["epochs"] + 1):
@@ -158,23 +158,42 @@ class Net(object):
                                                        mode="coder3", warmup = warmup)
                 all_optimizers = [enc_optimizer, dec_optimizer,
                                   coder_optimizer] if not self.args['separate_coder_training'] else [enc_optimizer, dec_optimizer, coder_optimizer, coder_optimizer2, coder_optimizer3]
-                for i in range(20): #combined_steps
+                for i in range(self.args["combined_steps"]): #combined_steps
                     res["Combined"] = func.train(self.model, all_optimizers, self.args, epoch=epoch, mode="combined", warmup = warmup)
 
                 res["Accuracy"], res["Stability"], res["Noise"], res["CorrectBlocks"] = func.validate(self.model, self.args, epoch=epoch,
                                                                                 mode="all")
-            #if not self.args["batch_size"] >= 256:
-            #    last_10_sdec_loss.append(res["S-Decoder"])
-            #    if len(last_10_sdec_loss) >= 10:
-            #        if max(last_10_sdec_loss) - min(last_10_sdec_loss) < 0.01:
-            #            self.args["batch_size"] = self.args["batch_size"]*2
-            #            print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
-            #        del last_10_sdec_loss[0]
+            '''
+            if not self.args["batch_size"] >= 1024:
+                last_10_acc.append(res["Accuracy"])
+                if len(last_10_acc) >= 10:
+                    if max(last_10_acc) - min(last_10_acc) < 0.01:
+                        self.args["batch_size"] = self.args["batch_size"] * 2
+                        self.args["blocks"] = self.args["blocks"] * 2
+                        print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
+                    del last_10_acc[0]
+            '''
 
+            '''
             if epoch % 100 == 0 and not self.args["batch_size"] >= 1024:
                 self.args["batch_size"] = self.args["batch_size"]*2
                 print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
+            '''
 
+
+            last_10_acc.append(res["Accuracy"])
+            if len(last_10_acc) >= 10:
+                if not self.args["batch_size"] >= 1024:
+                    if max(last_10_acc) - min(last_10_acc) < 0.01:
+                        self.args["batch_size"] = self.args["batch_size"] * 2
+                        self.args["blocks"] = self.args["blocks"] * 2
+                        print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
+                elif self.args["enc-lr"] > 0.00005:
+                    if max(last_10_acc) - min(last_10_acc) < 0.01:
+                        self.args["coder-lr"] = self.args["coder-lr"] - 0.00001
+                        self.args["enc-lr"] = self.args["enc-lr"] - 0.00001
+                        self.args["dec-lr"] = self.args["dec-lr"] - 0.00001
+                del last_10_acc[0]
 
             Net._save_model(self.args["working_dir"], self.model)
             if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":
