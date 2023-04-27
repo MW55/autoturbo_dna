@@ -22,9 +22,9 @@ def run_param_combination(pcom):
     #    print("ignored " + name + " as it is already done.")
     #    return
     print("starting " + name)
-    py_command = ("./sDNA.py --train --threads 5 --epochs 1000 --wdir /PATH/autoturbo_dna/models/final_trainings/"
+    py_command = ("./sDNA.py --train --threads 5 --epochs 700 --wdir /PATH/autoturbo_dna/models/final_trainings/"
                   + name + " --coder-units 128 --encoder " + str(pcom["encoder"])
-                  + " --enc-dropout 0.2 --enc-layers 7 +  --decoder " + str(pcom["decoder"])
+                  + " --enc-dropout 0.2 --enc-layers 7 --decoder " + str(pcom["decoder"])
                   + " --dec-layers 7 --dec-iterations 10" + " --lat-redundancy " + str(pcom["lat-redundancy"])
                   + " --enc-lr 0.0001 --dec-lr  0.0001 --enc-steps 20 --dec-steps 30 --coder "
                   + str(pcom["coder"]) + " --coder-layers 7 --coder-lr 0.0001 --coder-steps 20 --block-length "
