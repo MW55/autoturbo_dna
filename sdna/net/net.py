@@ -190,9 +190,9 @@ class Net(object):
                         print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
                 elif self.args["enc-lr"] > 0.00005:
                     if max(last_10_acc) - min(last_10_acc) < 0.01:
-                        self.args["coder-lr"] = self.args["coder-lr"] - 0.00001
-                        self.args["enc-lr"] = self.args["enc-lr"] - 0.00001
-                        self.args["dec-lr"] = self.args["dec-lr"] - 0.00001
+                        self.args["coder_lr"] = self.args["coder_lr"] - 0.00001
+                        self.args["enc_lr"] = self.args["enc_lr"] - 0.00001
+                        self.args["dec_lr"] = self.args["dec_lr"] - 0.00001
                 del last_10_acc[0]
 
             Net._save_model(self.args["working_dir"], self.model)
