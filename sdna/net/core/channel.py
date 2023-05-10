@@ -465,6 +465,7 @@ class Channel(object):
         for i, code in enumerate(inputs):
             x_in = code.cpu().detach().numpy()  # tensor can never be copied directly from the GPU to numpy structure
             seq_enc = Channel.bits_to_sequence(x_in, shape)        # 1. => transform bits into sequence
+            #print(seq_enc)
             p_seed = int(seed % (i + 1))    # 2. => apply noisy channel on sequence
             #if np.random.randint(3) == 0:  # Account for error-free sequences
             #    seq_dec = seq_enc

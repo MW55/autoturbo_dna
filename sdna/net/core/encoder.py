@@ -308,6 +308,9 @@ class SysEncoderRNN(EncoderBase):
                 x_p1 = x_p1.permute(0, 2, 1)
             x_p1 = self.actf(self._dropout(self._linear_1(x_p1)))
             x_t = EncoderBase.normalize(x_p1)
+        if self.args["redundancy"] != 0:
+            zeros = torch.zeros((1, 2, 1))
+            inputs = torch.cat((inputs, zeros), dim=1)
         x = torch.cat([inputs, x_t], dim=2)
         return x
 
@@ -691,6 +694,9 @@ class SysEncoderCNN(EncoderBase):
             x_p1 = self.actf(self._dropout(self._linear_1(x_p1)))
 
             x_t = EncoderBase.normalize(x_p1)
+        if self.args["redundancy"] != 0:
+            zeros = torch.zeros((1, 2, 1))
+            inputs = torch.cat((inputs, zeros), dim=1)
         x = torch.cat([inputs, x_t], dim=2)
         return x
 

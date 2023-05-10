@@ -1266,7 +1266,11 @@ class ResNetCoder2d(CoderBase):
 
             x_inp = torch.cat([x_sys, x_p1, x_p2_deinter], dim=2)
         else:
-            x_inp = torch.cat([x_sys, x_p1], dim=2)
+            x_p1 = inputs[:, :, 1].view((inputs.size()[0], inputs.size()[1], 1))
+            x_p1_no_pad, x_p1_padding = torch.split(x_p1, self.args["block_length"], dim=1)
+            x_p1_no_pad = self.deinterleaver(x_p1_no_pad)
+            x_p1_deinter = torch.cat((x_p1_no_pad, x_p1_padding), dim=1)
+            x_inp = torch.cat([x_sys, x_p1_deinter], dim=2)
 
         x = x_inp.view(x_inp.size()[0], 1, x_inp.size()[1], x_inp.size()[2])
         x = self._cnn_1(x)
@@ -1285,6 +1289,12 @@ class ResNetCoder2d(CoderBase):
             x_p2_no_pad, x_p2_padding = torch.split(x_p2, self.args["block_length"], dim=1)
             x_p2_no_pad = self.interleaver(x_p2_no_pad)
             x_p2 = torch.cat((x_p2_no_pad, x_p2_padding), dim=1)
+        else:
+            x_p1 = x[:, :, 1].view((x.size()[0], x.size()[1], 1))
+
+            x_p1_no_pad, x_p1_padding = torch.split(x_p1, self.args["block_length"], dim=1)
+            x_p1_no_pad = self.interleaver(x_p1_no_pad)
+            x_p1 = torch.cat((x_p1_no_pad, x_p1_padding), dim=1)
 
         x_sys = torch.flatten(x_sys, start_dim=1)
         x_sys = self.actf(self._dropout(self._linear_1(x_sys)))

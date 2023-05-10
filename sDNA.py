@@ -90,7 +90,7 @@ class SDNAArgs:
                                     type=str,
                                     metavar="PATH",
                                     dest='out')
-        self.generally.add_argument('--index_size',
+        self.generally.add_argument('--index-size',
                                     '-is',
                                     help='size (in bits) of the added index, larger files need bigger index sizes, has to be a multiple of 8.',
                                     default=16,

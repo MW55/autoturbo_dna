@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
-from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
+#from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
 import sdna.net.functional as func
 from sdna.net.core import *
 
@@ -188,12 +188,15 @@ class Net(object):
                         self.args["batch_size"] = self.args["batch_size"] * 2
                         self.args["blocks"] = self.args["blocks"] * 2
                         print("increased batch size, batch size is now: " + str(self.args["batch_size"]))
-                elif self.args["enc-lr"] > 0.00005:
+                        last_10_acc = []
+                elif self.args["enc_lr"] > 0.00005:
                     if max(last_10_acc) - min(last_10_acc) < 0.01:
                         self.args["coder_lr"] = self.args["coder_lr"] - 0.00001
                         self.args["enc_lr"] = self.args["enc_lr"] - 0.00001
                         self.args["dec_lr"] = self.args["dec_lr"] - 0.00001
-                del last_10_acc[0]
+                        last_10_acc = []
+                if last_10_acc:
+                    del last_10_acc[0]
 
             Net._save_model(self.args["working_dir"], self.model)
             if self.args["decoder"] == "transformer": #or self.args["decoder"] == "entransformer":

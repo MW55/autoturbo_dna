@@ -77,7 +77,11 @@ def train(model, optimizer, args, epoch=1, mode="encoder", warmup=False):
                 gradient = sl1loss(s_dec, x_train)
                 #gradient = func.binary_cross_entropy(s_dec, x_train)
                 if args['constraint_training'] and mode == "encoder":
+                    gradient = torch.tensor(0.0)
+                    #gradient.requires_grad = True
                     gradient += model.channel.evaluate(s_enc)  # weakens the gradients of the encoder when the generated code is unstable
+                    #print(gradient)
+                    gradient.requires_grad = True
                 #    if args["encoder"] == "vae":
                 #        gradient += args['beta']*((model.enc.kl_1 + model.enc.kl_2 + model.enc.kl_3)/3)
                     #if np.random.randint(0, 2) == 0:
