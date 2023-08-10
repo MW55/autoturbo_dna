@@ -51,7 +51,8 @@ CODERS = {
     "resnet_sep": ResNetCoder_sep,
     "resnet_conc": ResNetCoder_conc,
     "cnn_sep": CNN_sep,
-    "resnet_lat": ResNetCoder_lat
+    "resnet_lat": ResNetCoder_lat,
+    "resnet_lat2": ResNetCoder_lat2
 }
 
 __all__ = ['AutoEncoder',

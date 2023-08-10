@@ -164,8 +164,8 @@ class Channel(object):
                          * self._dna_simulator.error_rates[i]["err_rate"]["mismatch"])
                         for i in range(len(self._dna_simulator.error_rates))])
 
-        if not validate and np.random.randint(3) == 0:  # Account for error-free sequences
-            return inputs
+        #if not validate and np.random.randint(3) == 0:  # Account for error-free sequences
+        #    return inputs
 
         if validate:
             modes = ["insertion", "deletion", "mismatch"]
@@ -240,8 +240,8 @@ class Channel(object):
                          * self._dna_simulator.error_rates[i]["err_rate"]["mismatch"])
                         for i in range(len(self._dna_simulator.error_rates))])
 
-        if validate or np.random.randint(3) == 0:  # Account for error-free sequences
-            return inputs
+        #if not validate or np.random.randint(3) == 0:  # Account for error-free sequences
+        #    return inputs
 
         if validate:
             modes = ["insertion", "deletion", "mismatch"]
@@ -466,10 +466,10 @@ class Channel(object):
             x_in = code.cpu().detach().numpy()  # tensor can never be copied directly from the GPU to numpy structure
             seq_enc = Channel.bits_to_sequence(x_in, shape)        # 1. => transform bits into sequence
             p_seed = int(seed % (i + 1))    # 2. => apply noisy channel on sequence
-            if np.random.randint(3) == 0:  # Account for error-free sequences
-                seq_dec = seq_enc
-            else:
-                seq_dec = self.apply_sequence_errors(seq_enc, p_seed, modes)     # apply mutations on sequence
+            #if np.random.randint(3) == 0:  # Account for error-free sequences
+            #    seq_dec = seq_enc
+            #else:
+            seq_dec = self.apply_sequence_errors(seq_enc, p_seed, modes)     # apply mutations on sequence
             x_out = Channel.sequence_to_bits(seq_dec, shape)  # 3. => transform sequence back into bits
             x_out[:inputs.size()[1], :] = x_out[:inputs.size()[1], :] * x_in
             x_noisy[i] = x_out      # 4. assign the difference between the bits
