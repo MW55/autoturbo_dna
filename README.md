@@ -16,7 +16,7 @@ Install Python 3.7.x if not already done (if the GPU should be used, a CUDA-capa
 git clone https://github.com/MW55/autoturbo_dna.git
 
 # install packages under python 3.7.x
-pip install torch numpy scipy regex
+pip install torch numpy scipy regex pytorch-ignite
 ```
 ## Useage
 Train: 
