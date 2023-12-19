@@ -15,7 +15,7 @@ Install Python 3.7.x if not already done (if the GPU should be used, a CUDA-capa
 ```bash
 git clone https://github.com/MW55/autoturbo_dna.git
 
-# install packages under python 3.7.x
+# install packages (tested under python 3.7 and 3.11)
 pip install torch numpy scipy regex pytorch-ignite
 ```
 ## Useage
