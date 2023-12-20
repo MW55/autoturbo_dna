@@ -18,7 +18,7 @@ git clone https://github.com/MW55/autoturbo_dna.git
 # install packages (tested under python 3.7 and 3.11)
 pip install torch numpy scipy regex pytorch-ignite
 ```
-## Useage
+## Usage
 Train: 
 
 ```bash
@@ -127,5 +127,32 @@ There are different arguments that influence the model and with which the specif
 | --useq                    | str   | undesired\_sequences.json | Path to json file for undesired sequences                                                                                                                                |
 | --gc-window               | int   | 50                        | Size of the window to be used for the GC-Content error probability detection                                                                                             |
 | --kmer-window             | int   | 10                        | Size of the window to be used for the Kmer error probability detection                                                                                                   |
+
+## Docker:
+Autoturbo-DNA can also be run inside a Docker container. A Dockerfile for running Autoturbo-DNA on the CPU is provided in the repository.
+If you want to run Autoturbo-DNA inside a container while utilizing the host CUDA GPU, you have to install the *nvidia-container-toolkit*, 
+then configure the docker daemon to recognize the toolkit, run the container using the *--gpu* flag and use a CUDA base image.
+An extensive tutorial of how to allow Docker to utilize the host GPU can be found at [https://saturncloud.io/blog/how-to-install-pytorch-on-the-gpu-with-docker/](https://saturncloud.io/blog/how-to-install-pytorch-on-the-gpu-with-docker/).
+
+Build container (while being in the root of Autoturbo-DNA):
+```bash
+docker build -t autoturbo_dna . -f Dockerfile 
+```
+
+Train a model:
+```bash
+docker run -v </full/path/to/the/autoturbo-dna/project/>models:/autoturbo_dna/models:z -it autoturbo_dna ./sDNA.py --wdir models/simple_train/ --train 
+```
+The training parameters can be adjusted by utilizing the parameters described above.
+
+To encode data using a trained model:
+```bash
+docker run -v </full/path/to/the/autoturbo-dna/project/>models:/autoturbo_dna/models:z -v </full/path/to/the/autoturbo-dna/project/>test_data:/autoturbo_dna/test_data:z -it autoturbo_dna ./sDNA.py --wdir models/simple_train/ -i test_data/MOSLA.txt -o test_data/MOSLA_encoded.fasta -e
+```
+
+To decode the data:
+```bash
+docker run -v </full/path/to/the/autoturbo-dna/project/>models:/autoturbo_dna/models:z -v </full/path/to/the/autoturbo-dna/project/>test_data:/autoturbo_dna/test_data:z -it autoturbo_dna ./sDNA.py --wdir models/simple_train/ -i test_data/MOSLA_encoded.fasta -o test_data/MOSLA_decoded.txt -d
+```
 
 [1]:  Y. Jiang, H. Kim, H. Asnani, S. Kannan, S. Oh, and P. Viswanath, “Turbo autoencoder: Deep learning based channel codes for point-to-point communication channels,” in Advances in Neural Information Processing Systems, pp. 2754–2764, 2019.
